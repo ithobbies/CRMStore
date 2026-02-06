@@ -1,0 +1,16 @@
+﻿asgiref==3.11.0
+Django==5.2.9
+django-cors-headers==4.9.0
+django-crispy-forms==2.5
+crispy-bootstrap5==2025.6
+djangorestframework==3.16.1
+djangorestframework_simplejwt==5.5.1
+PyJWT==2.10.1
+sqlparse==0.5.5
+typing_extensions==4.15.0
+tzdata==2025.3
+# Server Dependencies
+gunicorn==21.2.0
+whitenoise[brotli]==6.6.0
+dj-database-url==2.1.0
+psycopg2-binary==2.9.9
