@@ -1,0 +1,226 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Дашборд - CRMStore{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="page-title">Дашборд</h1>
+        <p class="page-subtitle">Огляд вашого бізнесу за сьогодні</p>
+    </div>
+    <div class="header-date">
+        <span class="btn btn-secondary">
+            <i class="bi bi-calendar3"></i>
+            Сьогодні
+        </span>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="kpi-grid">
+    <div class="kpi-card">
+        <div class="kpi-content">
+            <div class="kpi-label">Замовлень сьогодні</div>
+            <div class="kpi-value">{{ orders_today }}</div>
+            <div class="kpi-trend {% if orders_change >= 0 %}positive{% else %}negative{% endif %}">
+                <i class="bi bi-arrow-{% if orders_change >= 0 %}up{% else %}down{% endif %}-right"></i>
+                {{ orders_change }}% з вчора
+            </div>
+        </div>
+        <div class="kpi-icon blue">
+            <i class="bi bi-bag-check"></i>
+        </div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-content">
+            <div class="kpi-label">Виручка за місяць</div>
+            <div class="kpi-value">{{ revenue_this_month|floatformat:0|intcomma }} ₴</div>
+            <div class="kpi-trend {% if revenue_change >= 0 %}positive{% else %}negative{% endif %}">
+                <i class="bi bi-arrow-{% if revenue_change >= 0 %}up{% else %}down{% endif %}-right"></i>
+                {{ revenue_change }}% з минулого місяця
+            </div>
+        </div>
+        <div class="kpi-icon green">
+            <i class="bi bi-currency-dollar"></i>
+        </div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-content">
+            <div class="kpi-label">Нових замовлень</div>
+            <div class="kpi-value">{{ new_orders }}</div>
+            <div class="kpi-trend" style="color: var(--accent-info);">
+                Потребують обробки
+            </div>
+        </div>
+        <div class="kpi-icon purple">
+            <i class="bi bi-clock-history"></i>
+        </div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-content">
+            <div class="kpi-label">Закінчуються товари</div>
+            <div class="kpi-value">{{ low_stock_count }}</div>
+            <div class="kpi-trend" style="color: var(--accent-warning);">
+                Stock &lt; 5 одиниць
+            </div>
+        </div>
+        <div class="kpi-icon orange">
+            <i class="bi bi-exclamation-triangle"></i>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Low Stock Alert -->
+    {% if low_stock_products %}
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>
+                    Товари з низьким залишком
+                </h3>
+                <a href="{% url 'product_list' %}?stock=low" class="btn btn-sm btn-outline">
+                    Переглянути всі
+                </a>
+            </div>
+            <div class="card-body p-0">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Товар</th>
+                            <th>Артикул</th>
+                            <th>Залишок</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in low_stock_products|slice:":5" %}
+                        <tr>
+                            <td>
+                                <div class="product-row">
+                                    <span class="product-color"
+                                        style="background: {% cycle '#ef4444' '#f59e0b' '#3b82f6' '#10b981' '#8b5cf6' %}"></span>
+                                    <span class="product-name">{{ product.name|truncatechars:30 }}</span>
+                                </div>
+                            </td>
+                            <td>{{ product.sku }}</td>
+                            <td>
+                                <span
+                                    class="badge {% if product.stock == 0 %}badge-canceled{% else %}badge-shipped{% endif %}">
+                                    {{ product.stock }} шт
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent Orders -->
+    <div class="col-lg-{% if low_stock_products %}6{% else %}12{% endif %}">
+        <div class="card h-100">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="bi bi-clock-history me-2"></i>
+                    Останні замовлення
+                </h3>
+                <a href="{% url 'order_list' %}" class="btn btn-sm btn-outline">
+                    Переглянути всі
+                </a>
+            </div>
+            <div class="card-body p-0">
+                {% if recent_orders %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Клієнт</th>
+                            <th>Статус</th>
+                            <th>Сума</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in recent_orders %}
+                        <tr style="cursor: pointer;" onclick="window.location='{% url 'order_detail' order.pk %}'">
+                            <td>#{{ order.pk }}</td>
+                            <td>{{ order.customer.full_name|truncatechars:25 }}</td>
+                            <td>
+                                <span class="badge badge-{{ order.status }}">
+                                    {{ order.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ order.get_total_cost|floatformat:0 }} ₴</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-inbox"></i>
+                    <h3>Немає замовлень</h3>
+                    <p>Створіть перше замовлення</p>
+                    <a href="{% url 'order_create' %}" class="btn btn-primary">
+                        <i class="bi bi-plus-lg"></i>
+                        Нове замовлення
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if top_products %}
+<!-- Top Products -->
+<div class="mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">
+                <i class="bi bi-trophy me-2"></i>
+                Топ товари
+            </h3>
+        </div>
+        <div class="card-body p-0">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Товар</th>
+                        <th>Ціна</th>
+                        <th>Продано</th>
+                        <th>Залишок</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in top_products %}
+                    <tr>
+                        <td>
+                            <div class="product-row">
+                                <span class="product-color"
+                                    style="background: {% cycle '#6366f1' '#10b981' '#f59e0b' '#ef4444' '#8b5cf6' %}"></span>
+                                <span class="product-name">{{ product.name }}</span>
+                            </div>
+                        </td>
+                        <td>{{ product.selling_price|floatformat:0 }} ₴</td>
+                        <td>{{ product.total_sold }} шт</td>
+                        <td>
+                            <span
+                                class="badge {% if product.stock < 5 %}badge-shipped{% else %}badge-completed{% endif %}">
+                                {{ product.stock }} шт
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

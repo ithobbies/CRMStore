@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Замовлення - CRMStore{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="page-title">Замовлення</h1>
+        <p class="page-subtitle">Управління замовленнями вашого магазину</p>
+    </div>
+    <a href="{% url 'order_create' %}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i>
+        Нове замовлення
+    </a>
+</div>
+
+<!-- Filter Bar -->
+<div class="filter-bar mb-4">
+    <a href="{% url 'order_list' %}" class="filter-pill {% if not status_filter %}active{% endif %}">
+        Всі
+        <span class="count">{{ total_orders }}</span>
+    </a>
+    {% for status_code, status_name in status_choices %}
+    <a href="{% url 'order_list' %}?status={{ status_code }}"
+        class="filter-pill {% if status_filter == status_code %}active{% endif %}">
+        {{ status_name }}
+        <span class="count">{{ status_counts|default_if_none:0 }}</span>
+    </a>
+    {% endfor %}
+</div>
+
+<!-- Orders Table -->
+<div class="table-container">
+    <div class="table-header">
+        <div class="table-title">
+            <i class="bi bi-bag me-2"></i>
+            Список замовлень
+        </div>
+        <div class="table-actions">
+            <form method="GET" action="{% url 'order_list' %}" class="d-flex gap-2">
+                {% if status_filter %}
+                <input type="hidden" name="status" value="{{ status_filter }}">
+                {% endif %}
+                <div class="header-search" style="width: 250px;">
+                    <i class="bi bi-search"></i>
+                    <input type="text" name="search" value="{{ search }}" placeholder="Пошук...">
+                </div>
+                <button type="submit" class="btn btn-secondary btn-sm">
+                    <i class="bi bi-funnel"></i>
+                    Фільтр
+                </button>
+            </form>
+            <button class="btn btn-outline btn-sm">
+                <i class="bi bi-download"></i>
+                Експорт
+            </button>
+        </div>
+    </div>
+
+    {% if orders %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Дата</th>
+                <th>Клієнт</th>
+                <th>Місто</th>
+                <th>Сума</th>
+                <th>Статус</th>
+                <th>Дії</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in orders %}
+            <tr>
+                <td>
+                    <strong>#{{ order.pk }}</strong>
+                </td>
+                <td>
+                    <div>{{ order.created_at|date:"d.m.Y" }}</div>
+                    <small class="text-muted">{{ order.created_at|time:"H:i" }}</small>
+                </td>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="user-avatar" style="width: 32px; height: 32px; font-size: 12px;">
+                            {{ order.customer.full_name|slice:":1"|upper }}
+                        </div>
+                        <div>
+                            <div class="fw-medium">{{ order.customer.full_name|truncatechars:25 }}</div>
+                            <small class="text-muted">{{ order.customer.phone }}</small>
+                        </div>
+                    </div>
+                </td>
+                <td>{{ order.city }}</td>
+                <td>
+                    <strong>{{ order.get_total_cost|floatformat:0|intcomma }} ₴</strong>
+                </td>
+                <td>
+                    <span class="badge badge-{{ order.status }}">
+                        {{ order.get_status_display }}
+                    </span>
+                </td>
+                <td>
+                    <div class="action-buttons">
+                        <a href="{% url 'order_detail' order.pk %}" class="action-btn" title="Переглянути">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        <a href="{% url 'order_update' order.pk %}" class="action-btn" title="Редагувати">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <button class="action-btn" title="Більше">
+                            <i class="bi bi-three-dots"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="pagination-wrapper">
+        <div class="pagination-info">
+            Показано {{ orders|length }} записів
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="bi bi-inbox"></i>
+        <h3>Замовлень не знайдено</h3>
+        <p>
+            {% if search or status_filter %}
+            Спробуйте змінити параметри пошуку
+            {% else %}
+            Створіть перше замовлення
+            {% endif %}
+        </p>
+        {% if not search and not status_filter %}
+        <a href="{% url 'order_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i>
+            Нове замовлення
+        </a>
+        {% else %}
+        <a href="{% url 'order_list' %}" class="btn btn-secondary">
+            Скинути фільтри
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

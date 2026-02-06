@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Клієнти - CRMStore{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="page-title">Клієнти</h1>
+        <p class="page-subtitle">База клієнтів вашого магазину</p>
+    </div>
+    <a href="{% url 'admin:orders_customer_add' %}" class="btn btn-primary" target="_blank">
+        <i class="bi bi-plus-lg"></i>
+        Додати клієнта
+    </a>
+</div>
+
+<!-- Customers Table -->
+<div class="table-container">
+    <div class="table-header">
+        <div class="table-title">
+            <i class="bi bi-people me-2"></i>
+            Список клієнтів
+        </div>
+        <div class="table-actions">
+            <form method="GET" action="{% url 'customer_list' %}" class="d-flex gap-2">
+                <div class="header-search" style="width: 250px;">
+                    <i class="bi bi-search"></i>
+                    <input type="text" name="search" value="{{ search }}" placeholder="Пошук клієнта...">
+                </div>
+                <button type="submit" class="btn btn-secondary btn-sm">
+                    <i class="bi bi-search"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    {% if customers %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Клієнт</th>
+                <th>Телефон</th>
+                <th>Джерело</th>
+                <th>Замовлень</th>
+                <th>Дата реєстрації</th>
+                <th>Дії</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for customer in customers %}
+            <tr>
+                <td>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="user-avatar" style="width: 36px; height: 36px; font-size: 13px;">
+                            {{ customer.full_name|slice:":1"|upper }}
+                        </div>
+                        <div>
+                            <div class="fw-medium">{{ customer.full_name }}</div>
+                            {% if customer.email %}
+                            <small class="text-muted">{{ customer.email }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <a href="tel:{{ customer.phone }}" class="text-decoration-none">
+                        {{ customer.phone }}
+                    </a>
+                </td>
+                <td>
+                    <span class="badge badge-confirmed">
+                        {{ customer.get_source_display }}
+                    </span>
+                </td>
+                <td>
+                    <strong>{{ customer.orders_count }}</strong>
+                </td>
+                <td>{{ customer.created_at|date:"d.m.Y" }}</td>
+                <td>
+                    <div class="action-buttons">
+                        <a href="{% url 'order_list' %}?search={{ customer.phone }}" class="action-btn"
+                            title="Замовлення клієнта">
+                            <i class="bi bi-bag"></i>
+                        </a>
+                        <a href="{% url 'admin:orders_customer_change' customer.pk %}" class="action-btn"
+                            title="Редагувати" target="_blank">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="pagination-wrapper">
+        <div class="pagination-info">
+            Показано {{ customers|length }} клієнтів
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="bi bi-people"></i>
+        <h3>Клієнтів не знайдено</h3>
+        <p>
+            {% if search %}
+            Спробуйте змінити параметри пошуку
+            {% else %}
+            Клієнти з'являться після створення замовлень
+            {% endif %}
+        </p>
+        {% if search %}
+        <a href="{% url 'customer_list' %}" class="btn btn-secondary">
+            Скинути пошук
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
