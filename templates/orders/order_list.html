@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load humanize %}
+{% load humanize orders_extras %}
 
 {% block title %}Замовлення - CRMStore{% endblock %}
 
@@ -17,15 +17,16 @@
 
 <!-- Filter Bar -->
 <div class="filter-bar mb-4">
-    <a href="{% url 'order_list' %}" class="filter-pill {% if not status_filter %}active{% endif %}">
+    <a href="{% url 'order_list' %}{% if date_filter or q %}?{% endif %}{% if date_filter %}date={{ date_filter|urlencode }}{% endif %}{% if date_filter and q %}&{% endif %}{% if q %}q={{ q|urlencode }}{% endif %}"
+        class="filter-pill {% if not status_filter %}active{% endif %}">
         Всі
         <span class="count">{{ total_orders }}</span>
     </a>
     {% for status_code, status_name in status_choices %}
-    <a href="{% url 'order_list' %}?status={{ status_code }}"
+    <a href="{% url 'order_list' %}?status={{ status_code }}{% if date_filter %}&date={{ date_filter|urlencode }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}"
         class="filter-pill {% if status_filter == status_code %}active{% endif %}">
         {{ status_name }}
-        <span class="count">{{ status_counts|default_if_none:0 }}</span>
+        <span class="count">{{ status_counts|dict_get:status_code|default:"0" }}</span>
     </a>
     {% endfor %}
 </div>
@@ -44,17 +45,22 @@
                 {% endif %}
                 <div class="header-search" style="width: 250px;">
                     <i class="bi bi-search"></i>
-                    <input type="text" name="search" value="{{ search }}" placeholder="Пошук...">
+                    <input type="text" name="q" value="{{ q }}" placeholder="Пошук...">
                 </div>
+                <input type="date" name="date" value="{{ date_filter }}" class="form-control" style="width: 170px;">
                 <button type="submit" class="btn btn-secondary btn-sm">
                     <i class="bi bi-funnel"></i>
                     Фільтр
                 </button>
+                <a href="{% url 'order_list' %}" class="btn btn-outline btn-sm">
+                    Очистити
+                </a>
             </form>
-            <button class="btn btn-outline btn-sm">
+            <a href="{% url 'order_export' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"
+                class="btn btn-outline btn-sm">
                 <i class="bi bi-download"></i>
                 Експорт
-            </button>
+            </a>
         </div>
     </div>
 
@@ -129,13 +135,13 @@
         <i class="bi bi-inbox"></i>
         <h3>Замовлень не знайдено</h3>
         <p>
-            {% if search or status_filter %}
+            {% if search or status_filter or date_filter %}
             Спробуйте змінити параметри пошуку
             {% else %}
             Створіть перше замовлення
             {% endif %}
         </p>
-        {% if not search and not status_filter %}
+        {% if not search and not status_filter and not date_filter %}
         <a href="{% url 'order_create' %}" class="btn btn-primary">
             <i class="bi bi-plus-lg"></i>
             Нове замовлення

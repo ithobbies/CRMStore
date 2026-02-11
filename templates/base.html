@@ -864,7 +864,7 @@
                     <i class="bi bi-box"></i>
                     <span>Товари</span>
                 </a>
-                <a href="{% url 'customer_list' %}" class="nav-link {% if request.resolver_match.url_name == 'customer_list' %}active{% endif %}">
+                <a href="{% url 'customer_list' %}" class="nav-link {% if 'customer' in request.resolver_match.url_name %}active{% endif %}">
                     <i class="bi bi-people"></i>
                     <span>Клієнти</span>
                 </a>
@@ -897,10 +897,10 @@
     <main class="main-content">
         <!-- Header -->
         <header class="main-header">
-            <div class="header-search">
+            <form class="header-search" method="GET" action="{% url 'order_list' %}">
                 <i class="bi bi-search"></i>
-                <input type="text" placeholder="Пошук замовлень, клієнтів..." id="globalSearch">
-            </div>
+                <input type="text" placeholder="Пошук замовлень, клієнтів..." id="globalSearch" name="q">
+            </form>
             
             <div class="header-actions">
                 <button class="header-btn" title="Сповіщення">
@@ -945,9 +945,11 @@
             }, 5000);
         });
 
-        // Mobile sidebar toggle
-        document.getElementById('globalSearch')?.addEventListener('focus', function() {
-            // Global search functionality can be added here
+        const globalSearchInput = document.getElementById('globalSearch');
+        globalSearchInput?.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                globalSearchInput.value = '';
+            }
         });
     </script>
     

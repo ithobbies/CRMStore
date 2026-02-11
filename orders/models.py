@@ -1,7 +1,10 @@
-from django.db import models
+from django.db import models, transaction
 from django.core.validators import MinValueValidator
 from django.core.exceptions import ValidationError
 from decimal import Decimal
+
+
+INACTIVE_ORDER_STATUSES = {'canceled', 'returned'}
 
 
 class Product(models.Model):
@@ -52,7 +55,7 @@ class Customer(models.Model):
     ]
 
     full_name = models.CharField('ПІБ', max_length=255)
-    phone = models.CharField('Телефон', max_length=20)
+    phone = models.CharField('Телефон', max_length=20, unique=True)
     email = models.EmailField('Email', blank=True, null=True)
     source = models.CharField(
         'Джерело', 
@@ -230,12 +233,38 @@ class OrderItem(models.Model):
         # Якщо ціна не встановлена, беремо поточну ціну продажу
         if not self.price:
             self.price = self.product.selling_price
-        super().save(*args, **kwargs)
+
+        self.full_clean()
+        with transaction.atomic():
+            super().save(*args, **kwargs)
 
     def clean(self):
-        """Валідація залишків"""
-        if self.pk is None:  # Нова позиція
+        """Валідація залишків при створенні та редагуванні позиції."""
+        order_status = self.order.status if self.order_id else None
+        if order_status in INACTIVE_ORDER_STATUSES:
+            return
+
+        if self.pk is None:
             if self.quantity > self.product.stock:
                 raise ValidationError({
                     'quantity': f'Недостатньо товару на складі. Доступно: {self.product.stock}'
                 })
+            return
+
+        try:
+            old_item = OrderItem.objects.select_related('product').get(pk=self.pk)
+        except OrderItem.DoesNotExist:
+            return
+
+        if old_item.product_id == self.product_id:
+            available = self.product.stock + old_item.quantity
+            if self.quantity > available:
+                raise ValidationError({
+                    'quantity': f'Недостатньо товару на складі. Доступно: {available}'
+                })
+            return
+
+        if self.quantity > self.product.stock:
+            raise ValidationError({
+                'quantity': f'Недостатньо товару на складі. Доступно: {self.product.stock}'
+            })

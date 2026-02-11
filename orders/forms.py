@@ -1,6 +1,13 @@
 from django import forms
+from django.db.models import Q
 from django.forms import inlineformset_factory
-from .models import Order, OrderItem, Customer, Product
+from .models import (
+    INACTIVE_ORDER_STATUSES,
+    Customer,
+    Order,
+    OrderItem,
+    Product,
+)
 
 
 class CustomerForm(forms.ModelForm):
@@ -28,6 +35,20 @@ class CustomerForm(forms.ModelForm):
                 'placeholder': 'Додаткова інформація про клієнта'
             }),
         }
+
+    def clean_phone(self):
+        phone = (self.cleaned_data.get('phone') or '').strip()
+        existing_customer = Customer.objects.filter(phone=phone)
+        if self.instance.pk:
+            existing_customer = existing_customer.exclude(pk=self.instance.pk)
+
+        if existing_customer.exists():
+            customer_id = existing_customer.values_list('pk', flat=True).first()
+            raise forms.ValidationError(
+                f'Клієнт з таким телефоном вже існує (ID: {customer_id}).'
+            )
+
+        return phone
 
 
 class ProductForm(forms.ModelForm):
@@ -137,17 +158,51 @@ class OrderForm(forms.ModelForm):
         self.fields['customer'].required = False
         self.fields['customer'].queryset = Customer.objects.all()
         self.fields['customer'].empty_label = '-- Оберіть існуючого клієнта --'
+        self._is_create = not self.instance.pk
+
+        active_status_choices = [
+            (status_code, status_name)
+            for status_code, status_name in Order.STATUS_CHOICES
+            if status_code not in INACTIVE_ORDER_STATUSES
+        ]
+
+        if self._is_create:
+            self.fields['status'].choices = [
+                (status_code, status_name)
+                for status_code, status_name in active_status_choices
+                if status_code in {'new', 'confirmed'}
+            ]
+            self.fields['status'].initial = 'new'
+        else:
+            self.fields['status'].choices = active_status_choices
 
     def clean(self):
         cleaned_data = super().clean()
         customer = cleaned_data.get('customer')
         new_name = cleaned_data.get('new_customer_name')
-        new_phone = cleaned_data.get('new_customer_phone')
+        new_phone = (cleaned_data.get('new_customer_phone') or '').strip()
+        status = cleaned_data.get('status')
+        raw_status = (self.data.get(self.add_prefix('status')) or '').strip()
 
         if not customer and not (new_name and new_phone):
             raise forms.ValidationError(
                 'Оберіть існуючого клієнта або введіть дані нового'
             )
+
+        if self._is_create and raw_status in INACTIVE_ORDER_STATUSES:
+            self.add_error('status', 'Неможливо створити замовлення зі статусом "Скасовано" або "Повернення".')
+
+        if not self._is_create and (status in INACTIVE_ORDER_STATUSES or raw_status in INACTIVE_ORDER_STATUSES):
+            self.add_error('status', 'Цей статус змінюється на сторінці деталей замовлення.')
+
+        if not customer and new_phone:
+            existing_customer = Customer.objects.filter(phone=new_phone).first()
+            if existing_customer:
+                self.add_error(
+                    'new_customer_phone',
+                    f'Клієнт з таким телефоном вже існує (ID: {existing_customer.pk}). '
+                    'Оберіть його у списку існуючих клієнтів.'
+                )
         
         return cleaned_data
 
@@ -156,10 +211,12 @@ class OrderForm(forms.ModelForm):
         
         # Якщо клієнт не обраний, створюємо нового
         if not instance.customer_id:
-            customer = Customer.objects.create(
-                full_name=self.cleaned_data['new_customer_name'],
-                phone=self.cleaned_data['new_customer_phone'],
-                source=self.cleaned_data.get('new_customer_source', 'other')
+            customer, _ = Customer.objects.get_or_create(
+                phone=self.cleaned_data['new_customer_phone'].strip(),
+                defaults={
+                    'full_name': self.cleaned_data['new_customer_name'],
+                    'source': self.cleaned_data.get('new_customer_source', 'other'),
+                }
             )
             instance.customer = customer
         
@@ -191,7 +248,12 @@ class OrderItemForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['product'].queryset = Product.objects.filter(stock__gt=0)
+        queryset = Product.objects.filter(stock__gt=0)
+        if self.instance.pk and self.instance.product_id:
+            queryset = Product.objects.filter(
+                Q(stock__gt=0) | Q(pk=self.instance.product_id)
+            )
+        self.fields['product'].queryset = queryset.distinct()
         self.fields['product'].empty_label = '-- Оберіть товар --'
         self.fields['price'].required = False
 

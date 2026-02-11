@@ -15,10 +15,17 @@
         </div>
     </div>
     <div class="d-flex gap-2">
+        {% if order.status == 'canceled' or order.status == 'returned' %}
+        <button class="btn btn-secondary" disabled title="Редагування позицій недоступне для неактивних замовлень">
+            <i class="bi bi-pencil"></i>
+            Редагувати
+        </button>
+        {% else %}
         <a href="{% url 'order_update' order.pk %}" class="btn btn-secondary">
             <i class="bi bi-pencil"></i>
             Редагувати
         </a>
+        {% endif %}
         <button class="btn btn-outline" onclick="window.print()">
             <i class="bi bi-printer"></i>
             Друк

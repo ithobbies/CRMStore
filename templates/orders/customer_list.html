@@ -9,7 +9,7 @@
         <h1 class="page-title">Клієнти</h1>
         <p class="page-subtitle">База клієнтів вашого магазину</p>
     </div>
-    <a href="{% url 'admin:orders_customer_add' %}" class="btn btn-primary" target="_blank">
+    <a href="{% url 'customer_create' %}" class="btn btn-primary">
         <i class="bi bi-plus-lg"></i>
         Додати клієнта
     </a>
@@ -79,12 +79,11 @@
                 <td>{{ customer.created_at|date:"d.m.Y" }}</td>
                 <td>
                     <div class="action-buttons">
-                        <a href="{% url 'order_list' %}?search={{ customer.phone }}" class="action-btn"
+                        <a href="{% url 'order_list' %}?q={{ customer.phone|urlencode }}" class="action-btn"
                             title="Замовлення клієнта">
                             <i class="bi bi-bag"></i>
                         </a>
-                        <a href="{% url 'admin:orders_customer_change' customer.pk %}" class="action-btn"
-                            title="Редагувати" target="_blank">
+                        <a href="{% url 'customer_update' customer.pk %}" class="action-btn" title="Редагувати">
                             <i class="bi bi-pencil"></i>
                         </a>
                     </div>

@@ -49,6 +49,20 @@
 
     <div class="kpi-card">
         <div class="kpi-content">
+            <div class="kpi-label">Прибуток за місяць</div>
+            <div class="kpi-value">{{ profit_this_month|floatformat:0|intcomma }} ₴</div>
+            <div class="kpi-trend {% if profit_change >= 0 %}positive{% else %}negative{% endif %}">
+                <i class="bi bi-arrow-{% if profit_change >= 0 %}up{% else %}down{% endif %}-right"></i>
+                {{ profit_change }}% з минулого місяця
+            </div>
+        </div>
+        <div class="kpi-icon blue">
+            <i class="bi bi-graph-up-arrow"></i>
+        </div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-content">
             <div class="kpi-label">Нових замовлень</div>
             <div class="kpi-value">{{ new_orders }}</div>
             <div class="kpi-trend" style="color: var(--accent-info);">

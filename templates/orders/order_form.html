@@ -17,6 +17,16 @@
 
 <form method="POST" id="orderForm">
     {% csrf_token %}
+    {% if form.non_field_errors or formset.non_form_errors %}
+    <div class="alert alert-danger mb-4">
+        {% for error in form.non_field_errors %}
+        <div>{{ error }}</div>
+        {% endfor %}
+        {% for error in formset.non_form_errors %}
+        <div>{{ error }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
 
     <div class="row g-4">
         <div class="col-lg-8">
@@ -31,6 +41,9 @@
                     <div class="mb-3">
                         <label class="form-label">Оберіть існуючого клієнта</label>
                         {{ form.customer }}
+                        {% for error in form.customer.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                        {% endfor %}
                     </div>
 
                     <div class="text-center text-muted my-3">— або створіть нового —</div>
@@ -39,14 +52,23 @@
                         <div class="col-md-4 mb-3">
                             <label class="form-label">ПІБ нового клієнта</label>
                             {{ form.new_customer_name }}
+                            {% for error in form.new_customer_name.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
                         </div>
                         <div class="col-md-4 mb-3">
                             <label class="form-label">Телефон</label>
                             {{ form.new_customer_phone }}
+                            {% for error in form.new_customer_phone.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
                         </div>
                         <div class="col-md-4 mb-3">
                             <label class="form-label">Джерело</label>
                             {{ form.new_customer_source }}
+                            {% for error in form.new_customer_source.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
                         </div>
                     </div>
                 </div>
@@ -82,12 +104,21 @@
                                 <td>
                                     {{ item_form.id }}
                                     {{ item_form.product }}
+                                    {% for error in item_form.product.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
                                 </td>
                                 <td>
                                     {{ item_form.quantity }}
+                                    {% for error in item_form.quantity.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
                                 </td>
                                 <td>
                                     {{ item_form.price }}
+                                    {% for error in item_form.price.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                    {% endfor %}
                                 </td>
                                 <td class="item-total">
                                     <strong>0 ₴</strong>
@@ -185,6 +216,9 @@
                 </div>
                 <div class="card-body">
                     {{ form.status }}
+                    {% for error in form.status.errors %}
+                    <div class="invalid-feedback d-block mt-2">{{ error }}</div>
+                    {% endfor %}
                 </div>
             </div>
 
