@@ -1,24 +1,32 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% load humanize %}
 
 {% block title %}Замовлення #{{ order.pk }} - CRMStore{% endblock %}
+{% block header_title %}Замовлення #{{ order.pk }}{% endblock %}
+{% block header_subtitle %}Детальний робочий простір замовлення{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url 'dashboard' %}">Головна</a>
+<span>/</span>
+<a href="{% url 'order_list' %}">Замовлення</a>
+<span>/</span>
+<span>#{{ order.pk }}</span>
+{% endblock %}
 
 {% block content %}
-<div class="page-header d-flex justify-content-between align-items-center mb-4">
-    <div class="d-flex align-items-center gap-3">
-        <a href="{% url 'order_list' %}" class="btn btn-outline btn-icon">
-            <i class="bi bi-arrow-left"></i>
-        </a>
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div class="d-flex align-items-center gap-2">
+        <a href="{% url 'order_list' %}" class="btn btn-outline btn-icon"><i class="bi bi-arrow-left"></i></a>
         <div>
             <h1 class="page-title">Замовлення #{{ order.pk }}</h1>
-            <p class="page-subtitle mb-0">Створено {{ order.created_at|date:"d.m.Y о H:i" }}</p>
+            <p class="page-subtitle">Створено {{ order.created_at|date:"d.m.Y" }} о {{ order.created_at|time:"H:i" }}</p>
         </div>
     </div>
     <div class="d-flex gap-2">
         {% if order.status == 'canceled' or order.status == 'returned' %}
-        <button class="btn btn-secondary" disabled title="Редагування позицій недоступне для неактивних замовлень">
+        <button class="btn btn-secondary" disabled>
             <i class="bi bi-pencil"></i>
-            Редагувати
+            Редагування недоступне
         </button>
         {% else %}
         <a href="{% url 'order_update' order.pk %}" class="btn btn-secondary">
@@ -26,224 +34,246 @@
             Редагувати
         </a>
         {% endif %}
-        <button class="btn btn-outline" onclick="window.print()">
+        <button class="btn btn-outline" type="button" onclick="window.print()">
             <i class="bi bi-printer"></i>
             Друк
         </button>
     </div>
 </div>
 
-<div class="row g-4">
-    <!-- Main Info -->
-    <div class="col-lg-8">
-        <!-- Status Card -->
-        <div class="card mb-4">
+<div class="workspace-grid">
+    <aside class="workspace-column">
+        <section class="card">
             <div class="card-header">
-                <h3 class="card-title">Статус замовлення</h3>
-                <span class="badge badge-{{ order.status }}" style="font-size: 14px; padding: 8px 16px;">
-                    {{ order.get_status_display }}
-                </span>
+                <h2 class="card-title"><i class="bi bi-person"></i> Клієнт</h2>
+                <a href="{% url 'customer_detail' order.customer.pk %}" class="btn btn-outline btn-sm">Профіль</a>
             </div>
             <div class="card-body">
-                <form method="POST" class="row g-3 align-items-end">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <span class="user-avatar" style="width:48px;height:48px;font-size:16px;">{{ order.customer.full_name|slice:":1"|upper }}</span>
+                    <div>
+                        <div class="fw-bold">{{ order.customer.full_name }}</div>
+                        <div class="cell-muted">{{ order.customer.get_source_display }}</div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Замовлень</div>
+                        <div class="stat-value">{{ customer_orders_count }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Виторг</div>
+                        <div class="stat-value">{{ customer_total_spent|floatformat:0|intcomma }} ₴</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Сер. чек</div>
+                        <div class="stat-value">{{ customer_avg_check|floatformat:0|intcomma }} ₴</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="card-header">
+                <h2 class="card-title"><i class="bi bi-telephone"></i> Контакти</h2>
+            </div>
+            <div class="card-body">
+                <ul class="details-list">
+                    <li>
+                        <span class="label">Телефон</span>
+                        <span class="value">
+                            <a href="tel:{{ order.customer.phone }}" class="text-decoration-none">{{ order.customer.phone }}</a>
+                            <button class="copy-btn" type="button" data-copy="{{ order.customer.phone }}" title="Копіювати телефон">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </span>
+                    </li>
+                    {% if order.customer.email %}
+                    <li>
+                        <span class="label">Email</span>
+                        <span class="value"><a href="mailto:{{ order.customer.email }}" class="text-decoration-none">{{ order.customer.email }}</a></span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="card-header">
+                <h2 class="card-title"><i class="bi bi-clock-history"></i> Історія клієнта</h2>
+            </div>
+            <div class="card-body p-0">
+                {% if customer_orders %}
+                <div class="table-scroll">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>№</th>
+                                <th>Дата</th>
+                                <th>Статус</th>
+                                <th>Сума</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for customer_order in customer_orders %}
+                            <tr data-row-link="{% url 'order_detail' customer_order.pk %}" class="row-clickable">
+                                <td data-label="№"><span class="order-code">#{{ customer_order.pk }}</span></td>
+                                <td data-label="Дата">{{ customer_order.created_at|date:"d.m.Y" }}</td>
+                                <td data-label="Статус"><span class="badge badge-{{ customer_order.status }}">{{ customer_order.get_status_display }}</span></td>
+                                <td data-label="Сума">{{ customer_order.get_total_cost|floatformat:0|intcomma }} ₴</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-state py-4">
+                    <i class="bi bi-hourglass"></i>
+                    <h3>Це перше замовлення</h3>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+    </aside>
+
+    <section class="workspace-column">
+        <article class="card">
+            <div class="card-header">
+                <h2 class="card-title"><i class="bi bi-signpost-split"></i> Статус і прогрес</h2>
+                <span class="badge badge-{{ order.status }}">{{ order.get_status_display }}</span>
+            </div>
+            <div class="card-body d-flex flex-column gap-3">
+                <ul class="status-timeline">
+                    {% for step in status_progress_steps %}
+                    <li class="{% if status_current_index >= forloop.counter0 %}is-complete{% endif %} {% if status_current_index == forloop.counter0 %}is-current{% endif %}">
+                        <span class="status-dot"></span>
+                        <div class="status-label">
+                            {% if step == 'new' %}Новий{% elif step == 'confirmed' %}Підтверджено{% elif step == 'shipped' %}Відправлено{% elif step == 'completed' %}Виконано{% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+
+                <form method="POST" class="row g-2 align-items-end">
                     {% csrf_token %}
-                    <div class="col-md-5">
-                        <label class="form-label">Змінити статус</label>
+                    <div class="col-lg-4 col-md-6">
+                        <label class="form-label">Статус</label>
                         {{ status_form.status }}
                     </div>
-                    <div class="col-md-5">
+                    <div class="col-lg-4 col-md-6">
                         <label class="form-label">ТТН</label>
                         {{ status_form.ttn }}
                     </div>
-                    <div class="col-md-2">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="bi bi-check-lg"></i>
-                            Зберегти
+                    <div class="col-lg-4 col-md-12 d-grid">
+                        <button type="submit" class="btn btn-primary" data-loading-text="Оновлення...">
+                            <i class="bi bi-check2"></i>
+                            Оновити
                         </button>
                     </div>
                 </form>
             </div>
-        </div>
+        </article>
 
-        <!-- Products -->
-        <div class="card">
+        <article class="card">
             <div class="card-header">
-                <h3 class="card-title">
-                    <i class="bi bi-box me-2"></i>
-                    Товари
-                </h3>
+                <h2 class="card-title"><i class="bi bi-box"></i> Товари</h2>
             </div>
             <div class="card-body p-0">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Товар</th>
-                            <th>Артикул</th>
-                            <th>Ціна</th>
-                            <th>Кількість</th>
-                            <th>Сума</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in order.items.all %}
-                        <tr>
-                            <td>
-                                <div class="product-row">
-                                    <span class="product-color"
-                                        style="background: {% cycle '#6366f1' '#10b981' '#f59e0b' '#ef4444' '#8b5cf6' %}"></span>
-                                    <span class="product-name">{{ item.product.name }}</span>
-                                </div>
-                            </td>
-                            <td>{{ item.product.sku }}</td>
-                            <td>{{ item.price|floatformat:2 }} ₴</td>
-                            <td>{{ item.quantity }} шт</td>
-                            <td><strong>{{ item.get_cost|floatformat:2 }} ₴</strong></td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                <div class="table-scroll">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Товар</th>
+                                <th>SKU</th>
+                                <th>Ціна</th>
+                                <th>К-сть</th>
+                                <th>Сума</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in order.items.all %}
+                            <tr>
+                                <td data-label="Товар">{{ item.product.name }}</td>
+                                <td data-label="SKU"><span class="mono">{{ item.product.sku }}</span></td>
+                                <td data-label="Ціна">{{ item.price|floatformat:2 }} ₴</td>
+                                <td data-label="К-сть">{{ item.quantity }}</td>
+                                <td data-label="Сума"><strong>{{ item.get_cost|floatformat:2 }} ₴</strong></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
-    </div>
+        </article>
 
-    <!-- Sidebar -->
-    <div class="col-lg-4">
-        <!-- Customer Info -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h3 class="card-title">
-                    <i class="bi bi-person me-2"></i>
-                    Клієнт
-                </h3>
-            </div>
-            <div class="card-body">
-                <div class="d-flex align-items-center gap-3 mb-3">
-                    <div class="user-avatar" style="width: 48px; height: 48px;">
-                        {{ order.customer.full_name|slice:":1"|upper }}
+        <div class="row g-3">
+            <div class="col-lg-6">
+                <article class="card h-100">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="bi bi-truck"></i> Доставка</h2>
                     </div>
-                    <div>
-                        <div class="fw-bold">{{ order.customer.full_name }}</div>
-                        <div class="text-muted">{{ order.customer.get_source_display }}</div>
+                    <div class="card-body">
+                        <ul class="details-list">
+                            <li><span class="label">Служба</span><span class="value">{{ order.get_delivery_service_display }}</span></li>
+                            <li><span class="label">Місто</span><span class="value">{{ order.city }}</span></li>
+                            {% if order.warehouse %}<li><span class="label">Відділення</span><span class="value">{{ order.warehouse }}</span></li>{% endif %}
+                            <li>
+                                <span class="label">ТТН</span>
+                                <span class="value">
+                                    {% if order.ttn %}
+                                    <span class="mono">{{ order.ttn }}</span>
+                                    <button class="copy-btn" type="button" data-copy="{{ order.ttn }}" title="Копіювати ТТН"><i class="bi bi-clipboard"></i></button>
+                                    {% else %}
+                                    —
+                                    {% endif %}
+                                </span>
+                            </li>
+                        </ul>
                     </div>
-                </div>
-                <div class="mb-2">
-                    <i class="bi bi-telephone me-2 text-muted"></i>
-                    <a href="tel:{{ order.customer.phone }}" class="text-decoration-none">
-                        {{ order.customer.phone }}
-                    </a>
-                </div>
-                {% if order.customer.email %}
-                <div>
-                    <i class="bi bi-envelope me-2 text-muted"></i>
-                    <a href="mailto:{{ order.customer.email }}" class="text-decoration-none">
-                        {{ order.customer.email }}
-                    </a>
-                </div>
-                {% endif %}
+                </article>
             </div>
-        </div>
-
-        <!-- Delivery Info -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h3 class="card-title">
-                    <i class="bi bi-truck me-2"></i>
-                    Доставка
-                </h3>
-            </div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <div class="text-muted small mb-1">Служба доставки</div>
-                    <div class="fw-medium">{{ order.get_delivery_service_display }}</div>
-                </div>
-                <div class="mb-3">
-                    <div class="text-muted small mb-1">Місто</div>
-                    <div class="fw-medium">{{ order.city }}</div>
-                </div>
-                {% if order.warehouse %}
-                <div class="mb-3">
-                    <div class="text-muted small mb-1">Відділення</div>
-                    <div class="fw-medium">{{ order.warehouse }}</div>
-                </div>
-                {% endif %}
-                {% if order.ttn %}
-                <div class="mb-3">
-                    <div class="text-muted small mb-1">ТТН</div>
-                    <div class="fw-medium">
-                        <span class="badge badge-confirmed">{{ order.ttn }}</span>
+            <div class="col-lg-6">
+                <article class="card h-100">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="bi bi-calculator"></i> Фінанси</h2>
                     </div>
-                </div>
-                {% endif %}
+                    <div class="card-body">
+                        <ul class="details-list">
+                            <li><span class="label">Тип оплати</span><span class="value">{{ order.get_payment_type_display }}</span></li>
+                            <li><span class="label">Сума товарів</span><span class="value">{{ order.get_total_cost|floatformat:2 }} ₴</span></li>
+                            <li><span class="label">Передплата</span><span class="value">-{{ order.prepayment|floatformat:2 }} ₴</span></li>
+                            {% if order.seller_expenses > 0 %}<li><span class="label">Витрати продавця</span><span class="value">{{ order.seller_expenses|floatformat:2 }} ₴</span></li>{% endif %}
+                            <li><span class="label"><strong>До сплати</strong></span><span class="value"><strong>{{ order.get_amount_due|floatformat:2 }} ₴</strong></span></li>
+                            <li><span class="label">Прибуток</span><span class="value profit-positive">{{ order.get_profit|floatformat:2 }} ₴</span></li>
+                        </ul>
+                    </div>
+                </article>
             </div>
         </div>
 
-        <!-- Financial Summary -->
-        <div class="card">
+        {% if order.notes %}
+        <article class="card">
             <div class="card-header">
-                <h3 class="card-title">
-                    <i class="bi bi-calculator me-2"></i>
-                    Фінанси
-                </h3>
+                <h2 class="card-title"><i class="bi bi-journal-text"></i> Примітки</h2>
             </div>
-            <div class="card-body">
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Тип оплати</span>
-                    <span class="fw-medium">{{ order.get_payment_type_display }}</span>
-                </div>
-                <hr>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Сума товарів</span>
-                    <span>{{ order.get_total_cost|floatformat:2 }} ₴</span>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Передплата</span>
-                    <span class="text-success">-{{ order.prepayment|floatformat:2 }} ₴</span>
-                </div>
-                {% if order.seller_expenses > 0 %}
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Витрати продавця</span>
-                    <span class="text-danger">{{ order.seller_expenses|floatformat:2 }} ₴</span>
-                </div>
-                {% endif %}
-                <hr>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="fw-bold">До сплати (накл. платіж)</span>
-                    <span class="fw-bold fs-5">{{ order.get_amount_due|floatformat:2 }} ₴</span>
-                </div>
-                <div class="d-flex justify-content-between">
-                    <span class="text-muted">Прибуток</span>
-                    <span class="text-success fw-medium">{{ order.get_profit|floatformat:2 }} ₴</span>
-                </div>
-            </div>
-        </div>
-    </div>
+            <div class="card-body">{{ order.notes|linebreaksbr }}</div>
+        </article>
+        {% endif %}
+    </section>
 </div>
-
-{% if order.notes %}
-<!-- Notes -->
-<div class="card mt-4">
-    <div class="card-header">
-        <h3 class="card-title">
-            <i class="bi bi-sticky me-2"></i>
-            Примітки
-        </h3>
-    </div>
-    <div class="card-body">
-        {{ order.notes }}
-    </div>
-</div>
-{% endif %}
 {% endblock %}
 
 {% block extra_css %}
 <style>
     @media print {
-
         .sidebar,
         .main-header,
+        .breadcrumbs,
         .btn,
-        .filter-bar,
-        form {
+        .floating-action-btn,
+        .mobile-bottom-actions,
+        .toast-stack {
             display: none !important;
         }
 
@@ -251,8 +281,12 @@
             margin-left: 0 !important;
         }
 
-        .card {
-            break-inside: avoid;
+        .page-content {
+            padding: 0 !important;
+        }
+
+        .workspace-grid {
+            display: block;
         }
     }
 </style>

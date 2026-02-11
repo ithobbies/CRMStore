@@ -1,91 +1,75 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 
 {% block title %}{{ title }} - CRMStore{% endblock %}
+{% block header_title %}Товар{% endblock %}
+{% block header_subtitle %}Створення та редагування товару{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url 'dashboard' %}">Головна</a>
+<span>/</span>
+<a href="{% url 'product_list' %}">Товари</a>
+<span>/</span>
+<span>{{ title }}</span>
+{% endblock %}
 
 {% block content %}
-<div class="page-header d-flex justify-content-between align-items-center mb-4">
-    <div class="d-flex align-items-center gap-3">
-        <a href="{% url 'product_list' %}" class="btn btn-outline btn-icon">
-            <i class="bi bi-arrow-left"></i>
-        </a>
-        <div>
-            <h1 class="page-title">{{ title }}</h1>
-            <p class="page-subtitle mb-0">Заповніть всі поля форми</p>
-        </div>
+<div class="page-header d-flex flex-wrap align-items-center gap-3">
+    <a href="{% url 'product_list' %}" class="btn btn-outline btn-icon"><i class="bi bi-arrow-left"></i></a>
+    <div>
+        <h1 class="page-title">{{ title }}</h1>
+        <p class="page-subtitle">Заповніть ціну, SKU та складський залишок.</p>
     </div>
 </div>
 
 <div class="row justify-content-center">
     <div class="col-lg-8">
-        <form method="POST">
+        <form method="POST" class="card">
             {% csrf_token %}
-
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="bi bi-box me-2"></i>
-                        Інформація про товар
-                    </h3>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-8 mb-3">
-                            <label class="form-label">Назва товару *</label>
-                            {{ form.name }}
-                            {% if form.name.errors %}
-                            <div class="text-danger small">{{ form.name.errors.0 }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Артикул (SKU) *</label>
-                            {{ form.sku }}
-                            {% if form.sku.errors %}
-                            <div class="text-danger small">{{ form.sku.errors.0 }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Ціна закупівлі (₴) *</label>
-                            {{ form.purchase_price }}
-                            {% if form.purchase_price.errors %}
-                            <div class="text-danger small">{{ form.purchase_price.errors.0 }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Ціна продажу (₴) *</label>
-                            {{ form.selling_price }}
-                            {% if form.selling_price.errors %}
-                            <div class="text-danger small">{{ form.selling_price.errors.0 }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Залишок на складі *</label>
-                            {{ form.stock }}
-                            {% if form.stock.errors %}
-                            <div class="text-danger small">{{ form.stock.errors.0 }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    {% if form.purchase_price.value and form.selling_price.value %}
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle me-2"></i>
-                        Маржа: {{ product.get_profit_margin|floatformat:1 }}%
-                    </div>
-                    {% endif %}
-                </div>
+            <div class="card-header">
+                <h2 class="card-title"><i class="bi bi-box"></i> Параметри товару</h2>
             </div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-md-8">
+                        <label class="form-label">Назва *</label>
+                        {{ form.name }}
+                        {% if form.name.errors %}<div class="text-danger small">{{ form.name.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">SKU *</label>
+                        {{ form.sku }}
+                        {% if form.sku.errors %}<div class="text-danger small">{{ form.sku.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Закупівля *</label>
+                        {{ form.purchase_price }}
+                        {% if form.purchase_price.errors %}<div class="text-danger small">{{ form.purchase_price.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Продаж *</label>
+                        {{ form.selling_price }}
+                        {% if form.selling_price.errors %}<div class="text-danger small">{{ form.selling_price.errors.0 }}</div>{% endif %}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Залишок *</label>
+                        {{ form.stock }}
+                        {% if form.stock.errors %}<div class="text-danger small">{{ form.stock.errors.0 }}</div>{% endif %}
+                    </div>
+                </div>
 
-            <div class="d-flex gap-2 mt-4">
-                <button type="submit" class="btn btn-primary btn-lg">
-                    <i class="bi bi-check-lg me-2"></i>
-                    Зберегти товар
+                {% if product %}
+                <div class="alert-card alert-warning mt-3">
+                    <i class="bi bi-percent alert-icon"></i>
+                    <span>Поточна маржа: {{ product.get_profit_margin|floatformat:1 }}%</span>
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-body border-top d-flex gap-2">
+                <button type="submit" class="btn btn-primary" data-loading-text="Збереження...">
+                    <i class="bi bi-check2"></i>
+                    Зберегти
                 </button>
-                <a href="{% url 'product_list' %}" class="btn btn-secondary btn-lg">
-                    Скасувати
-                </a>
+                <a href="{% url 'product_list' %}" class="btn btn-secondary">Скасувати</a>
             </div>
         </form>
     </div>

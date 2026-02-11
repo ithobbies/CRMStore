@@ -1,264 +1,192 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 
 {% block title %}{{ title }} - CRMStore{% endblock %}
+{% block header_title %}{{ title }}{% endblock %}
+{% block header_subtitle %}Форма створення та редагування замовлення{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url 'dashboard' %}">Головна</a>
+<span>/</span>
+<a href="{% url 'order_list' %}">Замовлення</a>
+<span>/</span>
+<span>{{ title }}</span>
+{% endblock %}
 
 {% block content %}
-<div class="page-header d-flex justify-content-between align-items-center mb-4">
-    <div class="d-flex align-items-center gap-3">
-        <a href="{% url 'order_list' %}" class="btn btn-outline btn-icon">
-            <i class="bi bi-arrow-left"></i>
-        </a>
-        <div>
-            <h1 class="page-title">{{ title }}</h1>
-            <p class="page-subtitle mb-0">Заповніть всі поля форми</p>
-        </div>
+<div class="page-header d-flex flex-wrap align-items-center gap-3">
+    <a href="{% url 'order_list' %}" class="btn btn-outline btn-icon"><i class="bi bi-arrow-left"></i></a>
+    <div>
+        <h1 class="page-title">{{ title }}</h1>
+        <p class="page-subtitle">Заповніть ключові дані: клієнт, товари, доставка, оплата.</p>
     </div>
 </div>
 
-<form method="POST" id="orderForm">
+<form method="POST" id="orderForm" novalidate>
     {% csrf_token %}
+
     {% if form.non_field_errors or formset.non_form_errors %}
-    <div class="alert alert-danger mb-4">
-        {% for error in form.non_field_errors %}
-        <div>{{ error }}</div>
-        {% endfor %}
-        {% for error in formset.non_form_errors %}
-        <div>{{ error }}</div>
-        {% endfor %}
+    <div class="alert alert-danger mb-3">
+        {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+        {% for error in formset.non_form_errors %}<div>{{ error }}</div>{% endfor %}
     </div>
     {% endif %}
 
-    <div class="row g-4">
-        <div class="col-lg-8">
-            <div class="card mb-4">
+    <div class="row g-3">
+        <div class="col-xl-8">
+            <section class="card mb-3">
                 <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="bi bi-person me-2"></i>
-                        Клієнт
-                    </h3>
+                    <h2 class="card-title"><i class="bi bi-person"></i> Клієнт</h2>
                 </div>
                 <div class="card-body">
                     <div class="mb-3">
                         <label class="form-label">Оберіть існуючого клієнта</label>
                         {{ form.customer }}
-                        {% for error in form.customer.errors %}
-                        <div class="invalid-feedback d-block">{{ error }}</div>
-                        {% endfor %}
+                        {% for error in form.customer.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
                     </div>
 
-                    <div class="text-center text-muted my-3">— або створіть нового —</div>
+                    <div class="text-center muted mb-3">або створіть нового</div>
 
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">ПІБ нового клієнта</label>
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label">ПІБ</label>
                             {{ form.new_customer_name }}
-                            {% for error in form.new_customer_name.errors %}
-                            <div class="invalid-feedback d-block">{{ error }}</div>
-                            {% endfor %}
+                            {% for error in form.new_customer_name.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
                         </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-4">
                             <label class="form-label">Телефон</label>
                             {{ form.new_customer_phone }}
-                            {% for error in form.new_customer_phone.errors %}
-                            <div class="invalid-feedback d-block">{{ error }}</div>
-                            {% endfor %}
+                            {% for error in form.new_customer_phone.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
                         </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-4">
                             <label class="form-label">Джерело</label>
                             {{ form.new_customer_source }}
-                            {% for error in form.new_customer_source.errors %}
-                            <div class="invalid-feedback d-block">{{ error }}</div>
-                            {% endfor %}
+                            {% for error in form.new_customer_source.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
                         </div>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <div class="card mb-4">
+            <section class="card mb-3">
                 <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="bi bi-box me-2"></i>
-                        Товари
-                    </h3>
-                    <button type="button" class="btn btn-sm btn-primary" id="addItem">
-                        <i class="bi bi-plus-lg"></i>
-                        Додати товар
-                    </button>
+                    <h2 class="card-title"><i class="bi bi-box"></i> Товари</h2>
+                    <button type="button" class="btn btn-primary btn-sm" id="addItem"><i class="bi bi-plus-lg"></i> Додати рядок</button>
                 </div>
                 <div class="card-body p-0">
                     {{ formset.management_form }}
-
-                    <table class="data-table" id="itemsTable">
-                        <thead>
-                            <tr>
-                                <th style="width: 40%">Товар</th>
-                                <th style="width: 15%">Кількість</th>
-                                <th style="width: 20%">Ціна</th>
-                                <th style="width: 20%">Сума</th>
-                                <th style="width: 5%"></th>
-                            </tr>
-                        </thead>
-                        <tbody id="itemsBody">
-                            {% for item_form in formset %}
-                            <tr class="item-row">
-                                <td>
-                                    {{ item_form.id }}
-                                    {{ item_form.product }}
-                                    {% for error in item_form.product.errors %}
-                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                    {% endfor %}
-                                </td>
-                                <td>
-                                    {{ item_form.quantity }}
-                                    {% for error in item_form.quantity.errors %}
-                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                    {% endfor %}
-                                </td>
-                                <td>
-                                    {{ item_form.price }}
-                                    {% for error in item_form.price.errors %}
-                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                    {% endfor %}
-                                </td>
-                                <td class="item-total">
-                                    <strong>0 ₴</strong>
-                                </td>
-                                <td>
-                                    {{ item_form.DELETE }}
-                                    <button type="button" class="action-btn delete remove-item" title="Видалити">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td colspan="3" class="text-end"><strong>Всього:</strong></td>
-                                <td><strong id="grandTotal">0 ₴</strong></td>
-                                <td></td>
-                            </tr>
-                        </tfoot>
-                    </table>
+                    <div class="table-scroll sticky-header">
+                        <table class="data-table" id="itemsTable">
+                            <thead>
+                                <tr>
+                                    <th style="width:40%">Товар</th>
+                                    <th style="width:14%">К-сть</th>
+                                    <th style="width:18%">Ціна</th>
+                                    <th style="width:18%">Сума</th>
+                                    <th style="width:10%"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="itemsBody">
+                                {% for item_form in formset %}
+                                <tr class="item-row {% if item_form.errors %}form-row-error{% endif %}">
+                                    <td data-label="Товар">
+                                        {{ item_form.id }}
+                                        {{ item_form.product }}
+                                        {% for error in item_form.product.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                                    </td>
+                                    <td data-label="К-сть">
+                                        {{ item_form.quantity }}
+                                        {% for error in item_form.quantity.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                                    </td>
+                                    <td data-label="Ціна">
+                                        {{ item_form.price }}
+                                        {% for error in item_form.price.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}
+                                    </td>
+                                    <td data-label="Сума" class="item-total"><strong>0 ₴</strong></td>
+                                    <td data-label="Дії">
+                                        {{ item_form.DELETE }}
+                                        <button type="button" class="action-btn delete remove-item" title="Видалити">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
+            </section>
 
-            <div class="card">
+            <section class="card">
                 <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="bi bi-sticky me-2"></i>
-                        Примітки
-                    </h3>
+                    <h2 class="card-title"><i class="bi bi-journal-text"></i> Примітки</h2>
                 </div>
                 <div class="card-body">
                     {{ form.notes }}
                 </div>
-            </div>
+            </section>
         </div>
 
-        <div class="col-lg-4">
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="bi bi-truck me-2"></i>
-                        Доставка
-                    </h3>
-                </div>
+        <div class="col-xl-4">
+            <section class="card mb-3">
+                <div class="card-header"><h2 class="card-title"><i class="bi bi-truck"></i> Доставка</h2></div>
                 <div class="card-body">
-                    <div class="mb-3">
-                        <label class="form-label">Служба доставки</label>
-                        {{ form.delivery_service }}
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Місто *</label>
-                        {{ form.city }}
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Відділення</label>
-                        {{ form.warehouse }}
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">ТТН</label>
-                        {{ form.ttn }}
-                    </div>
+                    <div class="mb-2"><label class="form-label">Служба</label>{{ form.delivery_service }}</div>
+                    <div class="mb-2"><label class="form-label">Місто *</label>{{ form.city }}</div>
+                    <div class="mb-2"><label class="form-label">Відділення</label>{{ form.warehouse }}</div>
+                    <div><label class="form-label">ТТН</label>{{ form.ttn }}</div>
                 </div>
-            </div>
+            </section>
 
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="bi bi-credit-card me-2"></i>
-                        Оплата
-                    </h3>
-                </div>
+            <section class="card mb-3">
+                <div class="card-header"><h2 class="card-title"><i class="bi bi-credit-card"></i> Оплата</h2></div>
                 <div class="card-body">
-                    <div class="mb-3">
-                        <label class="form-label">Тип оплати</label>
-                        {{ form.payment_type }}
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Передплата (₴)</label>
-                        {{ form.prepayment }}
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Витрати продавця (₴)</label>
-                        {{ form.seller_expenses }}
-                    </div>
+                    <div class="mb-2"><label class="form-label">Тип оплати</label>{{ form.payment_type }}</div>
+                    <div class="mb-2"><label class="form-label">Передплата</label>{{ form.prepayment }}</div>
+                    <div><label class="form-label">Витрати продавця</label>{{ form.seller_expenses }}</div>
                 </div>
-            </div>
+            </section>
 
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="bi bi-flag me-2"></i>
-                        Статус
-                    </h3>
-                </div>
+            <section class="card mb-3">
+                <div class="card-header"><h2 class="card-title"><i class="bi bi-flag"></i> Статус</h2></div>
                 <div class="card-body">
                     {{ form.status }}
-                    {% for error in form.status.errors %}
-                    <div class="invalid-feedback d-block mt-2">{{ error }}</div>
-                    {% endfor %}
+                    {% for error in form.status.errors %}<div class="invalid-feedback d-block mt-2">{{ error }}</div>{% endfor %}
                 </div>
-            </div>
+            </section>
 
-            <div class="d-grid gap-2">
-                <button type="submit" class="btn btn-primary btn-lg">
-                    <i class="bi bi-check-lg me-2"></i>
-                    Зберегти замовлення
-                </button>
-                <a href="{% url 'order_list' %}" class="btn btn-secondary">
-                    Скасувати
-                </a>
-            </div>
+            <section class="order-summary-sticky">
+                <div class="summary-line">
+                    <span>Сума замовлення</span>
+                    <strong id="stickyTotal">0 ₴</strong>
+                </div>
+                <div class="summary-actions">
+                    <button type="submit" class="btn btn-primary w-100" data-loading-text="Збереження...">
+                        <i class="bi bi-check2"></i>
+                        Зберегти
+                    </button>
+                    <a href="{% url 'order_list' %}" class="btn btn-secondary">Скасувати</a>
+                </div>
+            </section>
         </div>
     </div>
 </form>
 
 <template id="itemRowTemplate">
     <tr class="item-row">
-        <td>
-            <select name="items-__prefix__-product" class="form-select product-select">
+        <td data-label="Товар">
+            <input type="hidden" name="items-__prefix__-id" id="id_items-__prefix__-id">
+            <select name="items-__prefix__-product" id="id_items-__prefix__-product" class="form-select product-select">
                 <option value="">-- Оберіть товар --</option>
                 {% for product in products %}
-                <option value="{{ product.pk }}" data-price="{{ product.selling_price }}">{{ product.name }} ({{
-                    product.stock }} шт)</option>
+                <option value="{{ product.pk }}" data-price="{{ product.selling_price|stringformat:'f' }}">{{ product.name }} ({{ product.stock }} шт)</option>
                 {% endfor %}
             </select>
         </td>
-        <td>
-            <input type="number" name="items-__prefix__-quantity" class="form-control quantity-input" min="1" value="1">
-        </td>
-        <td>
-            <input type="number" name="items-__prefix__-price" class="form-control price-input" step="0.01" min="0">
-        </td>
-        <td class="item-total">
-            <strong>0 ₴</strong>
-        </td>
-        <td>
-            <button type="button" class="action-btn delete remove-item" title="Видалити">
-                <i class="bi bi-trash"></i>
-            </button>
+        <td data-label="К-сть"><input type="number" name="items-__prefix__-quantity" id="id_items-__prefix__-quantity" class="form-control quantity-input" min="1" value="1"></td>
+        <td data-label="Ціна"><input type="number" name="items-__prefix__-price" id="id_items-__prefix__-price" class="form-control price-input" step="0.01" min="0"></td>
+        <td data-label="Сума" class="item-total"><strong>0 ₴</strong></td>
+        <td data-label="Дії">
+            <input type="checkbox" name="items-__prefix__-DELETE" id="id_items-__prefix__-DELETE" hidden>
+            <button type="button" class="action-btn delete remove-item" title="Видалити"><i class="bi bi-trash"></i></button>
         </td>
     </tr>
 </template>
@@ -266,140 +194,155 @@
 
 {% block extra_js %}
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        console.log("Order form script loaded");
-        const itemsBody = document.getElementById('itemsBody');
-        const addButton = document.getElementById('addItem');
-        const template = document.getElementById('itemRowTemplate');
-        const totalFormsInput = document.querySelector('[name="items-TOTAL_FORMS"]') || document.querySelector('[name="form-TOTAL_FORMS"]');
+document.addEventListener('DOMContentLoaded', function () {
+    const itemsBody = document.getElementById('itemsBody');
+    const addButton = document.getElementById('addItem');
+    const template = document.getElementById('itemRowTemplate');
+    const totalFormsInput = document.querySelector('[name="items-TOTAL_FORMS"]') || document.querySelector('[name="form-TOTAL_FORMS"]');
+    const stickyTotal = document.getElementById('stickyTotal');
 
-        if (!totalFormsInput) {
-            console.error("TOTAL_FORMS input not found! Check formset prefix.");
-            return; // Stop execution if critical element is missing
-        }
-        console.log("Total forms input found:", totalFormsInput.name);
+    if (!itemsBody || !addButton || !template || !totalFormsInput) return;
 
-        const productPrices = {
+    const productPrices = {
         {% for product in products %}
         "{{ product.pk }}": {{ product.selling_price|stringformat:"f" }}{% if not forloop.last %}, {% endif %}
         {% endfor %}
     };
-    console.log("Product prices loaded:", Object.keys(productPrices).length);
 
-    addButton.addEventListener('click', function () {
-        console.log("Add button clicked");
-        const formCount = parseInt(totalFormsInput.value);
-        console.log("Current form count:", formCount);
-
-        const newRow = template.content.cloneNode(true);
-        const tr = newRow.querySelector('tr');
-        if (!tr) {
-            console.error("Could not find TR in template");
-            return;
-        }
-
-        tr.innerHTML = tr.innerHTML.replace(/__prefix__/g, formCount);
-        itemsBody.appendChild(tr);
-        totalFormsInput.value = formCount + 1;
-        bindRowEvents(tr);
-    });
-
-    function removeRow(btn) {
-        console.log("Remove row clicked");
-        const row = btn.closest('tr');
-        const deleteCheckbox = row.querySelector('[name*="-DELETE"]');
-        if (deleteCheckbox) {
-            console.log("Marking for deletion");
-            deleteCheckbox.checked = true;
-            row.style.display = 'none';
+    function markRowWithErrors(row) {
+        if (row.querySelector('.invalid-feedback')) {
+            row.classList.add('form-row-error');
         } else {
-            console.log("Removing new row");
-            row.remove();
+            row.classList.remove('form-row-error');
         }
-        calculateTotal();
     }
 
     function calculateRowTotal(row) {
         const quantity = parseFloat(row.querySelector('.quantity-input')?.value) || 0;
         const price = parseFloat(row.querySelector('.price-input')?.value) || 0;
         const total = quantity * price;
-        const totalEl = row.querySelector('.item-total strong');
-        if (totalEl) totalEl.textContent = total.toFixed(0) + ' ₴';
+        const totalCell = row.querySelector('.item-total strong');
+        if (totalCell) totalCell.textContent = `${total.toFixed(0)} ₴`;
         return total;
     }
 
     function calculateTotal() {
         let grandTotal = 0;
-        document.querySelectorAll('.item-row').forEach(row => {
+        itemsBody.querySelectorAll('.item-row').forEach((row) => {
             if (row.style.display !== 'none') {
                 grandTotal += calculateRowTotal(row);
             }
         });
-        document.getElementById('grandTotal').textContent = grandTotal.toFixed(0) + ' ₴';
+        stickyTotal.textContent = `${grandTotal.toFixed(0)} ₴`;
     }
 
     function onProductChange(select) {
-        console.log("Product changed", select.value);
         const row = select.closest('tr');
         const priceInput = row.querySelector('.price-input');
+        if (!priceInput) return;
         const productId = select.value;
-        if (productId && productPrices[productId]) {
+        if (productId && productPrices[productId] !== undefined) {
             priceInput.value = productPrices[productId];
-            console.log("Price updated to", productPrices[productId]);
         }
         calculateTotal();
     }
 
-    function bindRowEvents(row) {
-        const removeBtn = row.querySelector('.remove-item');
-        if (removeBtn) {
-            removeBtn.addEventListener('click', function () {
-                removeRow(this);
-            });
+    function removeRow(button) {
+        const row = button.closest('tr');
+        const deleteCheckbox = row.querySelector('[name$="-DELETE"]');
+        if (deleteCheckbox) {
+            deleteCheckbox.checked = true;
+            row.style.display = 'none';
+        } else {
+            row.remove();
         }
-
-        const productSelect = row.querySelector('.product-select');
-        if (productSelect) {
-            productSelect.addEventListener('change', function () {
-                onProductChange(this);
-            });
-        }
-
-        const quantityInput = row.querySelector('.quantity-input');
-        if (quantityInput) {
-            quantityInput.addEventListener('input', calculateTotal);
-        }
-
-        const priceInput = row.querySelector('.price-input');
-        if (priceInput) {
-            priceInput.addEventListener('input', calculateTotal);
-        }
+        calculateTotal();
     }
 
-    document.querySelectorAll('.item-row').forEach(bindRowEvents);
+    function focusNextField(row, currentElement) {
+        const focusable = Array.from(row.querySelectorAll('select, input[type="number"], input[type="text"]'))
+            .filter(el => !el.disabled && el.type !== 'hidden');
+        const index = focusable.indexOf(currentElement);
+        if (index >= 0 && index < focusable.length - 1) {
+            focusable[index + 1].focus();
+            return true;
+        }
+        return false;
+    }
+
+    function bindRowEvents(row) {
+        const removeBtn = row.querySelector('.remove-item');
+        const productSelect = row.querySelector('.product-select');
+        const quantityInput = row.querySelector('.quantity-input');
+        const priceInput = row.querySelector('.price-input');
+
+        removeBtn?.addEventListener('click', function () {
+            removeRow(this);
+        });
+
+        productSelect?.addEventListener('change', function () {
+            onProductChange(this);
+        });
+
+        [quantityInput, priceInput].forEach((input) => {
+            input?.addEventListener('input', calculateTotal);
+        });
+
+        [productSelect, quantityInput, priceInput].forEach((field) => {
+            field?.addEventListener('keydown', function (event) {
+                if (event.key !== 'Enter') return;
+                event.preventDefault();
+                const moved = focusNextField(row, event.target);
+                if (!moved) {
+                    addRow();
+                    const lastRow = itemsBody.querySelector('.item-row:last-child');
+                    lastRow?.querySelector('.product-select')?.focus();
+                }
+            });
+        });
+
+        markRowWithErrors(row);
+    }
+
+    function addRow() {
+        const formCount = parseInt(totalFormsInput.value, 10);
+        const newRow = template.content.cloneNode(true);
+        const tr = newRow.querySelector('tr');
+        tr.innerHTML = tr.innerHTML.replace(/__prefix__/g, formCount);
+        itemsBody.appendChild(tr);
+        totalFormsInput.value = formCount + 1;
+        bindRowEvents(tr);
+        calculateTotal();
+    }
+
+    addButton.addEventListener('click', addRow);
+
+    itemsBody.querySelectorAll('.item-row').forEach((row) => {
+        bindRowEvents(row);
+        const select = row.querySelector('.product-select');
+        const priceInput = row.querySelector('.price-input');
+        if (select && priceInput && !priceInput.value && select.value && productPrices[select.value] !== undefined) {
+            priceInput.value = productPrices[select.value];
+        }
+    });
+
     calculateTotal();
+
+    const firstFocusable = document.querySelector('#orderForm select:not([disabled]), #orderForm input:not([type="hidden"]):not([disabled])');
+    firstFocusable?.focus();
 });
 </script>
 {% endblock %}
 
 {% block extra_css %}
 <style>
-    /* Приховати стандартний чекбокс видалення Django */
-    input[name$="-DELETE"] {
-        display: none;
+    #itemsTable .form-select,
+    #itemsTable .form-control {
+        min-width: 110px;
     }
 
-    /* Однаковий розмір заголовків карток */
-    .card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        min-height: 55px;
-        /* Фіксована мінімальна висота */
-    }
-
-    .card-title {
-        margin-bottom: 0;
+    #itemsTable .action-btn {
+        margin-left: auto;
     }
 </style>
 {% endblock %}

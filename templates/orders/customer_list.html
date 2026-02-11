@@ -1,13 +1,21 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% load humanize %}
 
 {% block title %}Клієнти - CRMStore{% endblock %}
+{% block header_title %}Клієнти{% endblock %}
+{% block header_subtitle %}CRM-база покупців{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url 'dashboard' %}">Головна</a>
+<span>/</span>
+<span>Клієнти</span>
+{% endblock %}
 
 {% block content %}
-<div class="page-header d-flex justify-content-between align-items-center mb-4">
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-3">
     <div>
         <h1 class="page-title">Клієнти</h1>
-        <p class="page-subtitle">База клієнтів вашого магазину</p>
+        <p class="page-subtitle">Контакти, джерело ліда та історія взаємодії з магазином.</p>
     </div>
     <a href="{% url 'customer_create' %}" class="btn btn-primary">
         <i class="bi bi-plus-lg"></i>
@@ -15,104 +23,91 @@
     </a>
 </div>
 
-<!-- Customers Table -->
+<div class="stats-grid mb-3">
+    <div class="stat-card">
+        <div class="stat-label">Усього клієнтів</div>
+        <div class="stat-value">{{ total_customers }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">За пошуком</div>
+        <div class="stat-value">{{ customers|length }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Активний фокус</div>
+        <div class="stat-value">CRM</div>
+    </div>
+</div>
+
 <div class="table-container">
     <div class="table-header">
-        <div class="table-title">
-            <i class="bi bi-people me-2"></i>
-            Список клієнтів
-        </div>
+        <div class="table-title"><i class="bi bi-people"></i> База клієнтів</div>
         <div class="table-actions">
             <form method="GET" action="{% url 'customer_list' %}" class="d-flex gap-2">
-                <div class="header-search" style="width: 250px;">
+                <div class="header-search" style="width:260px;">
                     <i class="bi bi-search"></i>
-                    <input type="text" name="search" value="{{ search }}" placeholder="Пошук клієнта...">
+                    <input type="text" name="search" value="{{ search }}" placeholder="ПІБ або телефон">
                 </div>
-                <button type="submit" class="btn btn-secondary btn-sm">
-                    <i class="bi bi-search"></i>
-                </button>
+                <button type="submit" class="btn btn-secondary"><i class="bi bi-search"></i></button>
+                {% if search %}<a href="{% url 'customer_list' %}" class="btn btn-outline">Очистити</a>{% endif %}
             </form>
         </div>
     </div>
 
     {% if customers %}
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Клієнт</th>
-                <th>Телефон</th>
-                <th>Джерело</th>
-                <th>Замовлень</th>
-                <th>Дата реєстрації</th>
-                <th>Дії</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for customer in customers %}
-            <tr>
-                <td>
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="user-avatar" style="width: 36px; height: 36px; font-size: 13px;">
-                            {{ customer.full_name|slice:":1"|upper }}
+    <div class="table-scroll sticky-header">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Клієнт</th>
+                    <th>Телефон</th>
+                    <th>Джерело</th>
+                    <th>Замовлень</th>
+                    <th>Реєстрація</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for customer in customers %}
+                <tr data-row-link="{% url 'customer_detail' customer.pk %}" class="row-clickable">
+                    <td data-label="Клієнт">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="user-avatar">{{ customer.full_name|slice:":1"|upper }}</span>
+                            <div>
+                                <div class="fw-semibold">{{ customer.full_name }}</div>
+                                {% if customer.email %}<div class="cell-muted">{{ customer.email }}</div>{% endif %}
+                            </div>
                         </div>
-                        <div>
-                            <div class="fw-medium">{{ customer.full_name }}</div>
-                            {% if customer.email %}
-                            <small class="text-muted">{{ customer.email }}</small>
-                            {% endif %}
+                    </td>
+                    <td data-label="Телефон">
+                        <a href="tel:{{ customer.phone }}" class="text-decoration-none">{{ customer.phone }}</a>
+                        <button type="button" class="copy-btn" data-copy="{{ customer.phone }}" title="Копіювати телефон"><i class="bi bi-clipboard"></i></button>
+                    </td>
+                    <td data-label="Джерело"><span class="badge badge-confirmed">{{ customer.get_source_display }}</span></td>
+                    <td data-label="Замовлень"><strong>{{ customer.orders_count }}</strong></td>
+                    <td data-label="Реєстрація">{{ customer.created_at|date:"d.m.Y" }}</td>
+                    <td data-label="Дії">
+                        <div class="action-buttons hover-actions">
+                            <a href="{% url 'customer_detail' customer.pk %}" class="action-btn" title="Профіль"><i class="bi bi-person-vcard"></i></a>
+                            <a href="{% url 'order_list' %}?q={{ customer.phone|urlencode }}" class="action-btn" title="Замовлення"><i class="bi bi-bag"></i></a>
+                            <a href="{% url 'customer_update' customer.pk %}" class="action-btn" title="Редагувати"><i class="bi bi-pencil"></i></a>
                         </div>
-                    </div>
-                </td>
-                <td>
-                    <a href="tel:{{ customer.phone }}" class="text-decoration-none">
-                        {{ customer.phone }}
-                    </a>
-                </td>
-                <td>
-                    <span class="badge badge-confirmed">
-                        {{ customer.get_source_display }}
-                    </span>
-                </td>
-                <td>
-                    <strong>{{ customer.orders_count }}</strong>
-                </td>
-                <td>{{ customer.created_at|date:"d.m.Y" }}</td>
-                <td>
-                    <div class="action-buttons">
-                        <a href="{% url 'order_list' %}?q={{ customer.phone|urlencode }}" class="action-btn"
-                            title="Замовлення клієнта">
-                            <i class="bi bi-bag"></i>
-                        </a>
-                        <a href="{% url 'customer_update' customer.pk %}" class="action-btn" title="Редагувати">
-                            <i class="bi bi-pencil"></i>
-                        </a>
-                    </div>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    <div class="pagination-wrapper">
-        <div class="pagination-info">
-            Показано {{ customers|length }} клієнтів
-        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
+
+    <div class="pagination-wrapper">Показано клієнтів: {{ customers|length }}</div>
     {% else %}
     <div class="empty-state">
         <i class="bi bi-people"></i>
         <h3>Клієнтів не знайдено</h3>
-        <p>
-            {% if search %}
-            Спробуйте змінити параметри пошуку
-            {% else %}
-            Клієнти з'являться після створення замовлень
-            {% endif %}
-        </p>
+        <p>{% if search %}Змініть запит і спробуйте знову.{% else %}Після перших замовлень тут з’явиться CRM-картотека.{% endif %}</p>
         {% if search %}
-        <a href="{% url 'customer_list' %}" class="btn btn-secondary">
-            Скинути пошук
-        </a>
+        <a href="{% url 'customer_list' %}" class="btn btn-secondary">Скинути пошук</a>
+        {% else %}
+        <a href="{% url 'customer_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Додати клієнта</a>
         {% endif %}
     </div>
     {% endif %}

@@ -11,6 +11,7 @@ urlpatterns = [
     path('orders/create/', views.order_create, name='order_create'),
     path('orders/<int:pk>/', views.order_detail, name='order_detail'),
     path('orders/<int:pk>/edit/', views.order_update, name='order_update'),
+    path('search/global/', views.global_search, name='global_search'),
     
     # Products
     path('products/', views.product_list, name='product_list'),
@@ -19,6 +20,7 @@ urlpatterns = [
     
     # Customers
     path('customers/', views.customer_list, name='customer_list'),
+    path('customers/<int:pk>/', views.customer_detail, name='customer_detail'),
     path('customers/create/', views.customer_create, name='customer_create'),
     path('customers/<int:pk>/edit/', views.customer_update, name='customer_update'),
 ]

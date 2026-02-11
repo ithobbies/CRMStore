@@ -1,138 +1,184 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% load humanize %}
 
 {% block title %}Товари - CRMStore{% endblock %}
+{% block header_title %}Товари{% endblock %}
+{% block header_subtitle %}Склад, маржа та швидке редагування{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url 'dashboard' %}">Головна</a>
+<span>/</span>
+<span>Товари</span>
+{% endblock %}
 
 {% block content %}
-<div class="page-header d-flex justify-content-between align-items-center mb-4">
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-3">
     <div>
         <h1 class="page-title">Товари</h1>
-        <p class="page-subtitle">Каталог товарів вашого магазину</p>
+        <p class="page-subtitle">Контроль залишків, маржі й швидке оновлення карток товарів.</p>
     </div>
-    <a href="{% url 'product_create' %}" class="btn btn-primary">
-        <i class="bi bi-plus-lg"></i>
-        Додати товар
-    </a>
+    <a href="{% url 'product_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Додати товар</a>
 </div>
 
-<!-- Filter Bar -->
-<div class="filter-bar mb-4">
-    <a href="{% url 'product_list' %}" class="filter-pill {% if not stock_filter %}active{% endif %}">
-        Всі товари
-    </a>
-    <a href="{% url 'product_list' %}?stock=in" class="filter-pill {% if stock_filter == 'in' %}active{% endif %}">
-        <i class="bi bi-check-circle text-success"></i>
-        В наявності
-    </a>
-    <a href="{% url 'product_list' %}?stock=low" class="filter-pill {% if stock_filter == 'low' %}active{% endif %}">
-        <i class="bi bi-exclamation-triangle text-warning"></i>
-        Закінчуються
-    </a>
-    <a href="{% url 'product_list' %}?stock=out" class="filter-pill {% if stock_filter == 'out' %}active{% endif %}">
-        <i class="bi bi-x-circle text-danger"></i>
-        Немає в наявності
-    </a>
+<div class="filter-bar mb-3">
+    <a href="{% url 'product_list' %}{% if search %}?search={{ search|urlencode }}{% endif %}" class="filter-pill {% if not stock_filter %}active{% endif %}">Всі</a>
+    <a href="{% url 'product_list' %}?stock=in{% if search %}&search={{ search|urlencode }}{% endif %}" class="filter-pill {% if stock_filter == 'in' %}active{% endif %}"><i class="bi bi-check-circle"></i> В наявності</a>
+    <a href="{% url 'product_list' %}?stock=low{% if search %}&search={{ search|urlencode }}{% endif %}" class="filter-pill {% if stock_filter == 'low' %}active{% endif %}"><i class="bi bi-exclamation-triangle"></i> Low stock</a>
+    <a href="{% url 'product_list' %}?stock=out{% if search %}&search={{ search|urlencode }}{% endif %}" class="filter-pill {% if stock_filter == 'out' %}active{% endif %}"><i class="bi bi-x-circle"></i> Нульовий залишок</a>
 </div>
 
-<!-- Products Table -->
 <div class="table-container">
     <div class="table-header">
-        <div class="table-title">
-            <i class="bi bi-box me-2"></i>
-            Список товарів
-        </div>
+        <div class="table-title"><i class="bi bi-box"></i> Каталог товарів</div>
         <div class="table-actions">
             <form method="GET" action="{% url 'product_list' %}" class="d-flex gap-2">
-                {% if stock_filter %}
-                <input type="hidden" name="stock" value="{{ stock_filter }}">
-                {% endif %}
-                <div class="header-search" style="width: 250px;">
+                {% if stock_filter %}<input type="hidden" name="stock" value="{{ stock_filter }}">{% endif %}
+                <div class="header-search" style="width:260px;">
                     <i class="bi bi-search"></i>
-                    <input type="text" name="search" value="{{ search }}" placeholder="Пошук товару...">
+                    <input type="text" name="search" value="{{ search }}" placeholder="Назва або SKU">
                 </div>
-                <button type="submit" class="btn btn-secondary btn-sm">
-                    <i class="bi bi-search"></i>
-                </button>
+                <button type="submit" class="btn btn-secondary"><i class="bi bi-search"></i></button>
+                {% if search %}<a href="{% url 'product_list' %}{% if stock_filter %}?stock={{ stock_filter }}{% endif %}" class="btn btn-outline">Очистити</a>{% endif %}
             </form>
         </div>
     </div>
 
     {% if products %}
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Товар</th>
-                <th>Артикул</th>
-                <th>Закупівля</th>
-                <th>Продаж</th>
-                <th>Маржа</th>
-                <th>Залишок</th>
-                <th>Дії</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for product in products %}
-            <tr>
-                <td>
-                    <div class="product-row">
-                        <span class="product-color"
-                            style="background: {% cycle '#6366f1' '#10b981' '#f59e0b' '#ef4444' '#8b5cf6' '#ec4899' %}"></span>
-                        <span class="product-name">{{ product.name }}</span>
-                    </div>
-                </td>
-                <td>
-                    <code>{{ product.sku }}</code>
-                </td>
-                <td>{{ product.purchase_price|floatformat:2 }} ₴</td>
-                <td><strong>{{ product.selling_price|floatformat:2 }} ₴</strong></td>
-                <td>
-                    <span class="text-success">+{{ product.get_profit_margin|floatformat:0 }}%</span>
-                </td>
-                <td>
-                    <span
-                        class="badge {% if product.stock == 0 %}badge-canceled{% elif product.stock < 5 %}badge-shipped{% else %}badge-completed{% endif %}">
-                        {{ product.stock }} шт
-                    </span>
-                </td>
-                <td>
-                    <div class="action-buttons">
-                        <a href="{% url 'product_update' product.pk %}" class="action-btn" title="Редагувати">
-                            <i class="bi bi-pencil"></i>
-                        </a>
-                    </div>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    <div class="pagination-wrapper">
-        <div class="pagination-info">
-            Показано {{ products|length }} товарів
-        </div>
+    <div class="table-scroll sticky-header">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Товар</th>
+                    <th>SKU</th>
+                    <th>Закупівля</th>
+                    <th>Продаж</th>
+                    <th>Маржа</th>
+                    <th>Залишок</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr class="{% if product.stock == 0 %}stock-out-row{% endif %}" data-row-link="{% url 'product_update' product.pk %}">
+                    <td data-label="Товар">
+                        <div class="product-row">
+                            <span class="product-color" style="background:{% cycle '#0f6fef' '#0c9d61' '#d18616' '#df3f3f' '#6f42c1' %}"></span>
+                            <div>
+                                <div class="product-name">{{ product.name }}</div>
+                                {% if product.stock < 5 %}
+                                <div class="low-stock-indicator"><i class="bi bi-exclamation-triangle-fill"></i> Low stock</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
+                    <td data-label="SKU"><span class="mono">{{ product.sku }}</span></td>
+                    <td data-label="Закупівля">{{ product.purchase_price|floatformat:2 }} ₴</td>
+                    <td data-label="Продаж"><strong>{{ product.selling_price|floatformat:2 }} ₴</strong></td>
+                    <td data-label="Маржа">
+                        <span class="{% if product.get_profit_margin >= 0 %}profit-positive{% else %}profit-negative{% endif %}">
+                            {{ product.get_profit_margin|floatformat:1 }}%
+                        </span>
+                    </td>
+                    <td data-label="Залишок">
+                        <span class="badge {% if product.stock == 0 %}badge-canceled{% elif product.stock < 5 %}badge-shipped{% else %}badge-completed{% endif %}">
+                            {{ product.stock }} шт
+                        </span>
+                    </td>
+                    <td data-label="Дії">
+                        <div class="action-buttons hover-actions">
+                            <a href="{% url 'product_update' product.pk %}" class="action-btn" title="Редагувати"><i class="bi bi-pencil"></i></a>
+                            <button type="button" class="action-btn" title="Швидке редагування"
+                                data-product-id="{{ product.pk }}"
+                                data-product-name="{{ product.name }}"
+                                data-product-sku="{{ product.sku }}"
+                                data-product-purchase="{{ product.purchase_price }}"
+                                data-product-selling="{{ product.selling_price }}"
+                                data-product-stock="{{ product.stock }}"
+                                data-bs-toggle="modal"
+                                data-bs-target="#quickEditModal">
+                                <i class="bi bi-lightning"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
+
+    <div class="pagination-wrapper">Показано товарів: {{ products|length }}</div>
     {% else %}
     <div class="empty-state">
         <i class="bi bi-box"></i>
         <h3>Товарів не знайдено</h3>
-        <p>
-            {% if search or stock_filter %}
-            Спробуйте змінити параметри пошуку
-            {% else %}
-            Додайте перший товар
-            {% endif %}
-        </p>
-        {% if not search and not stock_filter %}
-        <a href="{% url 'product_create' %}" class="btn btn-primary">
-            <i class="bi bi-plus-lg"></i>
-            Додати товар
-        </a>
-        {% else %}
-        <a href="{% url 'product_list' %}" class="btn btn-secondary">
-            Скинути фільтри
-        </a>
-        {% endif %}
+        <p>{% if search or stock_filter %}Спробуйте змінити фільтр або запит.{% else %}Створіть першу товарну позицію.{% endif %}</p>
+        <a href="{% url 'product_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Додати товар</a>
     </div>
     {% endif %}
 </div>
+
+<div class="modal fade" id="quickEditModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form id="quickEditForm" method="POST">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-lightning"></i> Швидке редагування товару</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрити"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="quick-edit-form">
+                        <div>
+                            <label class="form-label">Назва</label>
+                            <input type="text" class="form-control" name="name" id="quickName" required>
+                        </div>
+                        <div>
+                            <label class="form-label">SKU</label>
+                            <input type="text" class="form-control" name="sku" id="quickSku" required>
+                        </div>
+                        <div>
+                            <label class="form-label">Закупівля</label>
+                            <input type="number" class="form-control" name="purchase_price" id="quickPurchase" min="0" step="0.01" required>
+                        </div>
+                        <div>
+                            <label class="form-label">Продаж</label>
+                            <input type="number" class="form-control" name="selling_price" id="quickSelling" min="0" step="0.01" required>
+                        </div>
+                    </div>
+
+                    <div class="mt-2" style="max-width:180px;">
+                        <label class="form-label">Залишок</label>
+                        <input type="number" class="form-control" name="stock" id="quickStock" min="0" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+                    <button type="submit" class="btn btn-primary" data-loading-text="Збереження...">
+                        <i class="bi bi-check2"></i>
+                        Зберегти
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('click', function (event) {
+        const trigger = event.target.closest('[data-product-id]');
+        if (!trigger) return;
+
+        const form = document.getElementById('quickEditForm');
+        if (!form) return;
+
+        form.action = `/products/${trigger.dataset.productId}/edit/`;
+        document.getElementById('quickName').value = trigger.dataset.productName || '';
+        document.getElementById('quickSku').value = trigger.dataset.productSku || '';
+        document.getElementById('quickPurchase').value = trigger.dataset.productPurchase || '0';
+        document.getElementById('quickSelling').value = trigger.dataset.productSelling || '0';
+        document.getElementById('quickStock').value = trigger.dataset.productStock || '0';
+    });
+</script>
 {% endblock %}

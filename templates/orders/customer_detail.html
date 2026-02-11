@@ -1,0 +1,120 @@
+﻿{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Клієнт {{ customer.full_name }} - CRMStore{% endblock %}
+{% block header_title %}Профіль клієнта{% endblock %}
+{% block header_subtitle %}Повна CRM-картка клієнта{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url 'dashboard' %}">Головна</a>
+<span>/</span>
+<a href="{% url 'customer_list' %}">Клієнти</a>
+<span>/</span>
+<span>{{ customer.full_name }}</span>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div class="d-flex align-items-center gap-2">
+        <a href="{% url 'customer_list' %}" class="btn btn-outline btn-icon"><i class="bi bi-arrow-left"></i></a>
+        <div>
+            <h1 class="page-title">{{ customer.full_name }}</h1>
+            <p class="page-subtitle">Клієнт з {{ customer.created_at|date:"d.m.Y" }}</p>
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'order_create' %}" class="btn btn-secondary"><i class="bi bi-plus-lg"></i> Створити замовлення</a>
+        <a href="{% url 'customer_update' customer.pk %}" class="btn btn-primary"><i class="bi bi-pencil"></i> Редагувати</a>
+    </div>
+</div>
+
+<section class="card customer-header-card mb-3">
+    <div class="card-body">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <span class="user-avatar" style="width:58px;height:58px;font-size:20px;">{{ customer.full_name|slice:":1"|upper }}</span>
+                <div>
+                    <h2 class="h2-title mb-1">{{ customer.full_name }}</h2>
+                    <div class="cell-muted">{{ customer.phone }}</div>
+                    {% if customer.email %}<div class="cell-muted">{{ customer.email }}</div>{% endif %}
+                </div>
+            </div>
+            <div class="customer-header-meta">
+                <span class="customer-header-pill">Джерело: {{ customer.get_source_display }}</span>
+                <span class="customer-header-pill">Замовлень: {{ orders_count }}</span>
+                <span class="customer-header-pill">Виконаних: {{ completed_orders_count }}</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="stats-grid mb-3">
+    <div class="stat-card">
+        <div class="stat-label">Загальна сума покупок</div>
+        <div class="stat-value">{{ total_spent|floatformat:0|intcomma }} ₴</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Кількість замовлень</div>
+        <div class="stat-value">{{ orders_count }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Середній чек</div>
+        <div class="stat-value">{{ average_check|floatformat:0|intcomma }} ₴</div>
+    </div>
+</div>
+
+{% if customer.notes %}
+<div class="card mb-3">
+    <div class="card-header"><h2 class="card-title"><i class="bi bi-journal-text"></i> Примітки</h2></div>
+    <div class="card-body">{{ customer.notes|linebreaksbr }}</div>
+</div>
+{% endif %}
+
+<div class="table-container">
+    <div class="table-header">
+        <div class="table-title"><i class="bi bi-clock-history"></i> Історія замовлень</div>
+        <span class="cell-muted">Усього: {{ customer_orders|length }}</span>
+    </div>
+
+    {% if customer_orders %}
+    <div class="table-scroll sticky-header">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>№</th>
+                    <th>Дата</th>
+                    <th>Місто</th>
+                    <th>Статус</th>
+                    <th>Сума</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in customer_orders %}
+                <tr data-row-link="{% url 'order_detail' order.pk %}" class="row-clickable">
+                    <td data-label="№"><span class="order-code">#{{ order.pk }}</span></td>
+                    <td data-label="Дата">{{ order.created_at|date:"d.m.Y" }}</td>
+                    <td data-label="Місто">{{ order.city }}</td>
+                    <td data-label="Статус"><span class="badge badge-{{ order.status }}">{{ order.get_status_display }}</span></td>
+                    <td data-label="Сума">{{ order.get_total_cost|floatformat:0|intcomma }} ₴</td>
+                    <td data-label="Дії">
+                        <div class="action-buttons hover-actions">
+                            <a href="{% url 'order_detail' order.pk %}" class="action-btn" title="Відкрити"><i class="bi bi-eye"></i></a>
+                            <a href="{% url 'order_update' order.pk %}" class="action-btn" title="Редагувати"><i class="bi bi-pencil"></i></a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="bi bi-inbox"></i>
+        <h3>Ще немає замовлень</h3>
+        <p>Створіть перше замовлення для цього клієнта.</p>
+        <a href="{% url 'order_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Створити</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

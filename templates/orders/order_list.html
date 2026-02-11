@@ -1,155 +1,165 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% load humanize orders_extras %}
 
 {% block title %}Замовлення - CRMStore{% endblock %}
+{% block header_title %}Замовлення{% endblock %}
+{% block header_subtitle %}Операційний журнал продажів{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{% url 'dashboard' %}">Головна</a>
+<span>/</span>
+<span>Замовлення</span>
+{% endblock %}
 
 {% block content %}
-<div class="page-header d-flex justify-content-between align-items-center mb-4">
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center gap-3">
     <div>
         <h1 class="page-title">Замовлення</h1>
-        <p class="page-subtitle">Управління замовленнями вашого магазину</p>
+        <p class="page-subtitle">Швидке керування статусами, пошуком і відвантаженнями.</p>
     </div>
-    <a href="{% url 'order_create' %}" class="btn btn-primary">
-        <i class="bi bi-plus-lg"></i>
-        Нове замовлення
-    </a>
+    <div class="d-flex gap-2">
+        <a href="{% url 'order_export' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline">
+            <i class="bi bi-download"></i>
+            Експорт CSV
+        </a>
+    </div>
 </div>
 
-<!-- Filter Bar -->
-<div class="filter-bar mb-4">
-    <a href="{% url 'order_list' %}{% if date_filter or q %}?{% endif %}{% if date_filter %}date={{ date_filter|urlencode }}{% endif %}{% if date_filter and q %}&{% endif %}{% if q %}q={{ q|urlencode }}{% endif %}"
-        class="filter-pill {% if not status_filter %}active{% endif %}">
-        Всі
-        <span class="count">{{ total_orders }}</span>
-    </a>
-    {% for status_code, status_name in status_choices %}
-    <a href="{% url 'order_list' %}?status={{ status_code }}{% if date_filter %}&date={{ date_filter|urlencode }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}"
-        class="filter-pill {% if status_filter == status_code %}active{% endif %}">
-        {{ status_name }}
-        <span class="count">{{ status_counts|dict_get:status_code|default:"0" }}</span>
-    </a>
-    {% endfor %}
-</div>
+<section class="orders-filter-sticky">
+    <div class="filter-panel d-flex flex-column gap-3">
+        <div class="segmented-control">
+            <a href="{% url 'order_list' %}{% if date_range or date_from or date_to or q %}?{% endif %}{% if q %}q={{ q|urlencode }}{% endif %}{% if q and date_range %}&{% endif %}{% if date_range %}date_range={{ date_range|urlencode }}{% endif %}{% if date_from %}{% if q or date_range %}&{% endif %}date_from={{ date_from|urlencode }}{% endif %}{% if date_to %}{% if q or date_range or date_from %}&{% endif %}date_to={{ date_to|urlencode }}{% endif %}" class="{% if not status_filter %}active{% endif %}">
+                Всі <span class="count">{{ total_orders }}</span>
+            </a>
+            {% for status_code, status_name in status_choices %}
+            <a href="{% url 'order_list' %}?status={{ status_code }}{% if q %}&q={{ q|urlencode }}{% endif %}{% if date_range %}&date_range={{ date_range|urlencode }}{% endif %}{% if date_from %}&date_from={{ date_from|urlencode }}{% endif %}{% if date_to %}&date_to={{ date_to|urlencode }}{% endif %}" class="{% if status_filter == status_code %}active{% endif %}">
+                {{ status_name }} <span class="count">{{ status_counts|dict_get:status_code|default:'0' }}</span>
+            </a>
+            {% endfor %}
+        </div>
 
-<!-- Orders Table -->
+        <form method="GET" action="{% url 'order_list' %}" class="d-flex flex-wrap gap-2 align-items-center">
+            {% if status_filter %}
+            <input type="hidden" name="status" value="{{ status_filter }}">
+            {% endif %}
+            <input type="hidden" name="date" value="{{ date_filter }}">
+
+            <div class="header-search" style="min-width: 250px; flex: 1 1 260px;">
+                <i class="bi bi-search"></i>
+                <input type="text" name="q" value="{{ q }}" placeholder="Клієнт, телефон, місто, ТТН">
+            </div>
+
+            <select class="form-select" name="date_range" id="dateRangePreset" style="max-width: 180px;">
+                <option value="" {% if not date_range %}selected{% endif %}>Будь-який період</option>
+                <option value="today" {% if date_range == 'today' %}selected{% endif %}>Сьогодні</option>
+                <option value="7d" {% if date_range == '7d' %}selected{% endif %}>Останні 7 днів</option>
+                <option value="month" {% if date_range == 'month' %}selected{% endif %}>Поточний місяць</option>
+                <option value="custom" {% if date_range == 'custom' or date_from or date_to %}selected{% endif %}>Кастомний період</option>
+            </select>
+
+            <div id="customDateRange" class="d-flex gap-2" style="display:none;">
+                <input class="form-control" type="date" name="date_from" value="{{ date_from }}">
+                <input class="form-control" type="date" name="date_to" value="{{ date_to }}">
+            </div>
+
+            <button type="submit" class="btn btn-secondary">
+                <i class="bi bi-funnel"></i>
+                Застосувати
+            </button>
+            <a href="{% url 'order_list' %}" class="btn btn-outline">Очистити</a>
+        </form>
+
+        {% if active_filters %}
+        <div class="active-filters">
+            {% for filter in active_filters %}
+            <span class="active-filter-badge"><i class="bi bi-dot"></i>{{ filter.label }}: {{ filter.value }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</section>
+
 <div class="table-container">
     <div class="table-header">
-        <div class="table-title">
-            <i class="bi bi-bag me-2"></i>
-            Список замовлень
-        </div>
-        <div class="table-actions">
-            <form method="GET" action="{% url 'order_list' %}" class="d-flex gap-2">
-                {% if status_filter %}
-                <input type="hidden" name="status" value="{{ status_filter }}">
-                {% endif %}
-                <div class="header-search" style="width: 250px;">
-                    <i class="bi bi-search"></i>
-                    <input type="text" name="q" value="{{ q }}" placeholder="Пошук...">
-                </div>
-                <input type="date" name="date" value="{{ date_filter }}" class="form-control" style="width: 170px;">
-                <button type="submit" class="btn btn-secondary btn-sm">
-                    <i class="bi bi-funnel"></i>
-                    Фільтр
-                </button>
-                <a href="{% url 'order_list' %}" class="btn btn-outline btn-sm">
-                    Очистити
-                </a>
-            </form>
-            <a href="{% url 'order_export' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}"
-                class="btn btn-outline btn-sm">
-                <i class="bi bi-download"></i>
-                Експорт
-            </a>
-        </div>
+        <div class="table-title"><i class="bi bi-table"></i> Список замовлень</div>
+        <span class="cell-muted">Показано: {{ orders|length }}</span>
     </div>
 
     {% if orders %}
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Дата</th>
-                <th>Клієнт</th>
-                <th>Місто</th>
-                <th>Сума</th>
-                <th>Статус</th>
-                <th>Дії</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for order in orders %}
-            <tr>
-                <td>
-                    <strong>#{{ order.pk }}</strong>
-                </td>
-                <td>
-                    <div>{{ order.created_at|date:"d.m.Y" }}</div>
-                    <small class="text-muted">{{ order.created_at|time:"H:i" }}</small>
-                </td>
-                <td>
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="user-avatar" style="width: 32px; height: 32px; font-size: 12px;">
-                            {{ order.customer.full_name|slice:":1"|upper }}
+    <div class="table-scroll sticky-header">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>№</th>
+                    <th>Дата</th>
+                    <th>Клієнт</th>
+                    <th>Місто</th>
+                    <th>ТТН</th>
+                    <th>Сума</th>
+                    <th>Статус</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr data-row-link="{% url 'order_detail' order.pk %}" class="row-clickable {% if order.status == 'canceled' or order.status == 'returned' %}stock-out-row{% endif %}">
+                    <td data-label="№"><span class="order-code">#{{ order.pk }}</span></td>
+                    <td data-label="Дата">
+                        <div>{{ order.created_at|date:"d.m.Y" }}</div>
+                        <div class="cell-muted">{{ order.created_at|time:"H:i" }}</div>
+                    </td>
+                    <td data-label="Клієнт">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="user-avatar">{{ order.customer.full_name|slice:":1"|upper }}</span>
+                            <div>
+                                <div class="fw-semibold">{{ order.customer.full_name|truncatechars:24 }}</div>
+                                <a href="tel:{{ order.customer.phone }}" class="cell-muted text-decoration-none">{{ order.customer.phone }}</a>
+                            </div>
                         </div>
-                        <div>
-                            <div class="fw-medium">{{ order.customer.full_name|truncatechars:25 }}</div>
-                            <small class="text-muted">{{ order.customer.phone }}</small>
-                        </div>
-                    </div>
-                </td>
-                <td>{{ order.city }}</td>
-                <td>
-                    <strong>{{ order.get_total_cost|floatformat:0|intcomma }} ₴</strong>
-                </td>
-                <td>
-                    <span class="badge badge-{{ order.status }}">
-                        {{ order.get_status_display }}
-                    </span>
-                </td>
-                <td>
-                    <div class="action-buttons">
-                        <a href="{% url 'order_detail' order.pk %}" class="action-btn" title="Переглянути">
-                            <i class="bi bi-eye"></i>
-                        </a>
-                        <a href="{% url 'order_update' order.pk %}" class="action-btn" title="Редагувати">
-                            <i class="bi bi-pencil"></i>
-                        </a>
-                        <button class="action-btn" title="Більше">
-                            <i class="bi bi-three-dots"></i>
+                    </td>
+                    <td data-label="Місто">{{ order.city }}</td>
+                    <td data-label="ТТН">
+                        {% if order.ttn %}
+                        <span class="mono">{{ order.ttn }}</span>
+                        <button class="copy-btn" type="button" data-copy="{{ order.ttn }}" title="Скопіювати ТТН">
+                            <i class="bi bi-clipboard"></i>
                         </button>
-                    </div>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                        {% else %}
+                        <span class="cell-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td data-label="Сума"><strong>{{ order.get_total_cost|floatformat:0|intcomma }} ₴</strong></td>
+                    <td data-label="Статус"><span class="badge badge-{{ order.status }}">{{ order.get_status_display }}</span></td>
+                    <td data-label="Дії">
+                        <div class="action-buttons hover-actions">
+                            <a href="{% url 'order_detail' order.pk %}" class="action-btn" title="Деталі"><i class="bi bi-eye"></i></a>
+                            <a href="{% url 'order_update' order.pk %}" class="action-btn" title="Редагувати"><i class="bi bi-pencil"></i></a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
     <div class="pagination-wrapper">
-        <div class="pagination-info">
-            Показано {{ orders|length }} записів
-        </div>
+        Усього записів: {{ orders|length }}
     </div>
     {% else %}
     <div class="empty-state">
         <i class="bi bi-inbox"></i>
         <h3>Замовлень не знайдено</h3>
-        <p>
-            {% if search or status_filter or date_filter %}
-            Спробуйте змінити параметри пошуку
-            {% else %}
-            Створіть перше замовлення
-            {% endif %}
-        </p>
-        {% if not search and not status_filter and not date_filter %}
-        <a href="{% url 'order_create' %}" class="btn btn-primary">
-            <i class="bi bi-plus-lg"></i>
-            Нове замовлення
-        </a>
+        <p>{% if q or status_filter or date_range or date_from or date_to %}Змініть параметри фільтра або очистіть пошук.{% else %}Почніть із першого замовлення, щоб заповнити стрічку роботи.{% endif %}</p>
+
+        {% if not q and not status_filter and not date_range and not date_from and not date_to %}
+        <div class="onboarding-hints">
+            <div class="onboarding-hint">1. Створіть замовлення через кнопку «Нове замовлення».</div>
+            <div class="onboarding-hint">2. Додайте товари та контакт клієнта.</div>
+            <div class="onboarding-hint">3. Ведіть статуси від «Новий» до «Виконано».</div>
+        </div>
+        <a href="{% url 'order_create' %}" class="btn btn-primary mt-3"><i class="bi bi-plus-lg"></i> Створити замовлення</a>
         {% else %}
-        <a href="{% url 'order_list' %}" class="btn btn-secondary">
-            Скинути фільтри
-        </a>
+        <a href="{% url 'order_list' %}" class="btn btn-secondary">Скинути фільтри</a>
         {% endif %}
     </div>
     {% endif %}
