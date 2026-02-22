@@ -167,6 +167,45 @@ class OrderStockSignalsTests(TestCase):
         product.refresh_from_db()
         self.assertEqual(product.stock, 6)
 
+    def test_item_update_for_returned_order_does_not_change_stock(self):
+        product = self.create_product('SKU-7', 12)
+        order = self.create_order(status='new')
+        item = OrderItem.objects.create(
+            order=order,
+            product=product,
+            quantity=4,
+            price=product.selling_price,
+        )
+        product.refresh_from_db()
+        self.assertEqual(product.stock, 8)
+
+        order.status = 'returned'
+        order.save()
+        product.refresh_from_db()
+        self.assertEqual(product.stock, 12)
+
+        item.quantity = 2
+        item.save()
+        product.refresh_from_db()
+        self.assertEqual(product.stock, 12)
+
+    def test_item_create_and_delete_for_returned_order_do_not_change_stock(self):
+        product = self.create_product('SKU-8', 9)
+        order = self.create_order(status='returned')
+
+        item = OrderItem.objects.create(
+            order=order,
+            product=product,
+            quantity=3,
+            price=product.selling_price,
+        )
+        product.refresh_from_db()
+        self.assertEqual(product.stock, 9)
+
+        item.delete()
+        product.refresh_from_db()
+        self.assertEqual(product.stock, 9)
+
 
 class OrderListAndExportViewTests(TestCase):
     def setUp(self):
@@ -319,6 +358,51 @@ class OrderFormRestrictionsTests(TestCase):
         self.assertEqual(response.url, reverse('order_detail', args=[order.pk]))
 
 
+class OrderStatusReactivationViewTests(TestCase):
+    def setUp(self):
+        self.customer = Customer.objects.create(
+            full_name='Status Customer',
+            phone='+380777777777',
+        )
+        self.product = Product.objects.create(
+            name='Status Product',
+            sku='STATUS-SKU',
+            purchase_price=Decimal('20.00'),
+            selling_price=Decimal('40.00'),
+            stock=5,
+        )
+
+    def test_reactivate_with_insufficient_stock_shows_message(self):
+        order = Order.objects.create(customer=self.customer, city='Kyiv', status='new')
+        OrderItem.objects.create(
+            order=order,
+            product=self.product,
+            quantity=3,
+            price=self.product.selling_price,
+        )
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock, 2)
+
+        order.status = 'canceled'
+        order.save()
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.stock, 5)
+
+        Product.objects.filter(pk=self.product.pk).update(stock=1)
+
+        response = self.client.post(
+            reverse('order_detail', args=[order.pk]),
+            data={'status': 'new', 'ttn': ''},
+        )
+        self.assertEqual(response.status_code, 200)
+
+        order.refresh_from_db()
+        self.product.refresh_from_db()
+        self.assertEqual(order.status, 'canceled')
+        self.assertEqual(self.product.stock, 1)
+        self.assertContains(response, 'Недостатньо товару')
+
+
 class CustomerViewsTests(TestCase):
     def setUp(self):
         self.customer = Customer.objects.create(
@@ -362,3 +446,21 @@ class CustomerViewsTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.customer.refresh_from_db()
         self.assertEqual(self.customer.full_name, 'Existing Customer Updated')
+
+
+class BaseTemplateContextTests(TestCase):
+    def setUp(self):
+        self.customer = Customer.objects.create(
+            full_name='Badge Customer',
+            phone='+380888888888',
+        )
+
+    def test_new_orders_count_available_in_base_context(self):
+        Order.objects.create(customer=self.customer, city='Kyiv', status='new')
+        Order.objects.create(customer=self.customer, city='Lviv', status='new')
+        Order.objects.create(customer=self.customer, city='Odesa', status='completed')
+
+        response = self.client.get(reverse('dashboard'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['new_orders_count'], 2)
+        self.assertContains(response, 'nav-badge')

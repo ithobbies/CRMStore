@@ -311,9 +311,13 @@ def order_detail(request, pk):
     if request.method == 'POST':
         status_form = OrderStatusForm(request.POST, instance=order)
         if status_form.is_valid():
-            status_form.save()
-            messages.success(request, 'Статус замовлення оновлено!')
-            return redirect('order_detail', pk=pk)
+            try:
+                status_form.save()
+            except ValidationError as exc:
+                messages.error(request, '; '.join(exc.messages))
+            else:
+                messages.success(request, 'Статус замовлення оновлено!')
+                return redirect('order_detail', pk=pk)
     else:
         status_form = OrderStatusForm(instance=order)
     
@@ -596,3 +600,4 @@ def global_search(request):
         ],
     }
     return JsonResponse(payload)
+
