@@ -1,5 +1,5 @@
 param(
-    [string]$Host = "127.0.0.1",
+    [string]$BindHost = "127.0.0.1",
     [int]$Port = 8000
 )
 
@@ -14,4 +14,4 @@ if (-not $env:ALLOWED_HOSTS) {
     $env:ALLOWED_HOSTS = "127.0.0.1,localhost,testserver"
 }
 
-python manage.py runserver "$Host`:$Port"
+python manage.py runserver "$BindHost`:$Port"
